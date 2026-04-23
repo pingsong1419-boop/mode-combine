@@ -209,12 +209,20 @@ async function handleScan() {
     return
   }
   
-  // 1. 在重置前先记住当前的 SN
-  const memorySN = (code || (orderInfo.value?.code || orderInfo.value?.orderCode) || '').trim().toUpperCase()
+  // 1. 识别 SN 类型：提取输入条码，并与当前正在处理的 SN 进行比对
+  const inputSN = code.trim().toUpperCase()
+  const currentSN = (orderInfo.value?.code || orderInfo.value?.orderCode || '').trim().toUpperCase()
+  const isNewProduct = inputSN && inputSN !== currentSN
   
   localStorage.setItem(PRODUCT_KEY, code)
-  resetAll()
-  addLog('info', `[PLC触发] 开始拉取待生产任务...`)
+  
+  // 智能重置：仅在新 SN 时清空数据
+  if (isNewProduct || !orderInfo.value) {
+    addLog('info', `[新任务] 检测到新 SN [${inputSN || '空'}]，重置系统状态...`)
+    resetAll()
+  } else {
+    addLog('info', `[二次触发] 正在复核 SN [${currentSN}] 的状态...`)
+  }
   
   orderLoading.value = true
   const t0 = Date.now()
@@ -242,45 +250,41 @@ async function handleScan() {
       duration 
     }
     
+    // 步骤 2 & 3：初步筛选状态为 2 且类型为 0/1 的所有工单
     const allOrders = res.datas || []
     const validOrders = allOrders.filter(o => {
-      // 状态必须为 2
       const statusOk = String(o.order_Status) === '2'
-      // 类型必须为 0 (普通) 或 1 (主工单)
       const type = o.order_Type ?? o.orderType
       const typeOk = type === 0 || type === 1 || type === '0' || type === '1'
       return statusOk && typeOk
     })
     
-    // 使用重置前保存的 memorySN 进行比对
-    const targetSN = memorySN
-    
-    // 情况 1: 如果存在可识别的 SN (来自输入或记录)
+    // 步骤 5：再次触发与匹配验证
+    const targetSN = currentSN || inputSN
     if (targetSN) {
+      // 在最新列表中寻找匹配的 SN
       const match = allOrders.find(o => {
         const fieldCode = String(o.code || '').trim().toUpperCase()
         const fieldOrderCode = String(o.orderCode || '').trim().toUpperCase()
         return fieldCode === targetSN || fieldOrderCode === targetSN
       })
       
-      // 判定：如果找到了匹配项且状态为 2，直接静默通过
+      // 验证通过：找到相同 code 且 order_Status 为 2
       if (match && String(match.order_Status) === '2') {
         orderInfo.value = match
         addLog('success', `[二次复核] SN [${targetSN}] 状态确认正常，自动继续`)
-        await fetchRouteList(match.route_No)
+        // 智能跳转：如果已完成则去 info，否则去 material
+        const targetTab = testResult.value === 'OK' ? 'info' : 'material'
+        await fetchRouteList(match.route_No, targetTab)
         return
       }
       
-      // 如果找到了但状态变了，或者没找到，则需要弹出
-      const failReason = match ? `状态变为[${match.order_Status}]` : '任务已不存在'
+      // 验证失败：状态改变或未找到 Code
+      const failReason = match ? `状态变为[${match.order_Status}]` : '任务已不存在或无法匹配'
       addLog('warn', `[核对中断] SN [${targetSN}] ${failReason}，请重新确认`)
     } 
-    // 情况 2: 彻底没有条码记录 (初次进入且没扫码)
-    else {
-      // 即使只有 1 个工单号
-    }
 
-    // 情况 3: 兜底逻辑 - 弹出列表供人工确认
+    // 步骤 4：人工选择弹窗
     if (validOrders.length > 0) {
       pendingOrders.value = validOrders
       addLog('info', `[待确认] 共有 ${validOrders.length} 个有效任务，请手动选择`)
@@ -499,7 +503,7 @@ const isMatrixFullyValidated = computed(() => {
   return true
 })
 
-async function fetchRouteList(routeCode: string) {
+async function fetchRouteList(routeCode: string, targetTab = 'material') {
   routeLoading.value = true
   const t0 = Date.now()
   const rec: ApiRecord = { 
@@ -521,7 +525,7 @@ async function fetchRouteList(routeCode: string) {
        const steps = MOCK_ROUTE_DATA.data.workSeqList
        routeSteps.value = steps
        rec.status = 'success'; addLog('success', '[仿真] 模拟工艺路线获取成功')
-       activeTab.value = 'material'
+       activeTab.value = targetTab
        return
     }
 
@@ -547,7 +551,7 @@ async function fetchRouteList(routeCode: string) {
       })
     }
     
-    activeTab.value = 'material'
+    activeTab.value = targetTab
   } catch (err: any) {
     apiRecords.value[0] = { ...apiRecords.value[0], status: 'error' }
     addLog('error', err.message)

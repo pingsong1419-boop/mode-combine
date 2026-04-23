@@ -714,63 +714,60 @@ function resetResult() {
                 <table class="matrix-table">
                   <thead>
                     <tr>
-                      <th width="60">序号</th>
-                      <th>1列数据</th>
-                      <th>二列数据</th>
-                      <th>三列</th>
-                      <th>物料编号&长度校验</th>
-                      <th>重码校验</th>
-                      <th>单物料校验</th>
+                      <th width="80">位置序号</th>
+                      <th>采集电芯条码</th>
+                      <th width="120">规则校验</th>
+                      <th width="120">重码校验</th>
+                      <th width="120">单物料校验</th>
                       <th>处理后结果 (24位)</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="i in matrixLayers" :key="i">
-                      <td class="text-center">{{ i }}</td>
-                      <td v-for="col in [0, 1, 2]" :key="col" :class="{ 'has-code': getMatrixBarcode(i-1, col) }">
-                        <div class="cell-content">
-                          <span class="barcode-text" :title="getMatrixBarcode(i-1, col)">{{ getMatrixBarcode(i-1, col) || '-' }}</span>
-                          <span v-if="getMatrixBarcode(i-1, col) && isBarcodeValid(getMatrixBarcode(i-1, col))" class="mini-ok">✓</span>
-                        </div>
-                      </td>
-                      <td class="text-center">
-                        <span v-if="isLayerValid(i-1)" class="badge success">校验成功</span>
-                        <span v-else-if="getMatrixBarcode(i-1, 0)" class="badge error">验证中</span>
-                        <span v-else>-</span>
-                      </td>
-                      <!-- 重码校验 (按层级汇总) -->
-                      <td class="text-center">
-                        <template v-if="getMatrixBarcode(i-1, 0)">
-                          <span v-if="isLayerDuplicateValid(i-1) === 'loading'" class="badge info">校验中...</span>
-                          <span v-else-if="isLayerDuplicateValid(i-1) === 'success'" class="badge success">通过</span>
-                          <span v-else-if="isLayerDuplicateValid(i-1) === 'error'" class="badge error">失败</span>
-                          <span v-else class="badge info">等待</span>
-                        </template>
-                        <span v-else>-</span>
-                      </td>
-                      <!-- 单物料校验 (按层级汇总) -->
-                      <td class="text-center">
-                        <template v-if="getMatrixBarcode(i-1, 0)">
-                          <span v-if="isLayerSingleValid(i-1) === 'loading'" class="badge info">校验中...</span>
-                          <span v-else-if="isLayerSingleValid(i-1) === 'success'" class="badge success">校验成功</span>
-                          <span v-else-if="isLayerSingleValid(i-1) === 'error'" class="badge error">校验失败</span>
-                          <span v-else class="badge info">等待</span>
-                        </template>
-                        <span v-else>-</span>
-                      </td>
-                      <!-- 处理后结果 (垂直显示 3 列的结果) -->
-                      <td class="text-center p-0">
-                        <div class="final-codes-column">
-                          <div v-for="col in [0, 1, 2]" :key="col" class="final-code-item" 
-                               :class="{ 'replaced-zero': getFinalBarcode(i-1, col).startsWith('000'), 
-                                         'replaced-nine': getFinalBarcode(i-1, col).startsWith('999') }">
-                            {{ getFinalBarcode(i-1, col) }}
+                    <template v-for="cIdx in [0, 1, 2]" :key="`col-${cIdx}`">
+                      <tr v-for="rIdx in Array.from({length: matrixLayers}, (_, i) => i)" :key="`cell-${cIdx}-${rIdx}`">
+                        <td class="text-center font-bold" style="background: rgba(255,255,255,0.02)">{{ cIdx + 1 }}.{{ rIdx + 1 }}</td>
+                        <td :class="{ 'has-code': getMatrixBarcode(rIdx, cIdx) }">
+                          <div class="cell-content">
+                            <span class="barcode-text">{{ getMatrixBarcode(rIdx, cIdx) || '未采集' }}</span>
+                            <span v-if="getMatrixBarcode(rIdx, cIdx) && isBarcodeValid(getMatrixBarcode(rIdx, cIdx))" class="mini-ok">✓</span>
                           </div>
-                        </div>
-                      </td>
-                    </tr>
+                        </td>
+                        <td class="text-center">
+                          <template v-if="getMatrixBarcode(rIdx, cIdx)">
+                            <span v-if="isBarcodeValid(getMatrixBarcode(rIdx, cIdx))" class="badge success">通过</span>
+                            <span v-else class="badge error">失败</span>
+                          </template>
+                          <span v-else>-</span>
+                        </td>
+                        <td class="text-center">
+                          <template v-if="getMatrixBarcode(rIdx, cIdx)">
+                            <span v-if="barcodeValidationResults[getMatrixBarcode(rIdx, cIdx)]?.duplicate === 'loading'" class="badge info">校验中...</span>
+                            <span v-else-if="barcodeValidationResults[getMatrixBarcode(rIdx, cIdx)]?.duplicate === 'success'" class="badge success">通过</span>
+                            <span v-else-if="barcodeValidationResults[getMatrixBarcode(rIdx, cIdx)]?.duplicate === 'error'" class="badge error">失败</span>
+                            <span v-else class="badge info">等待</span>
+                          </template>
+                          <span v-else>-</span>
+                        </td>
+                        <td class="text-center">
+                          <template v-if="getMatrixBarcode(rIdx, cIdx)">
+                            <span v-if="barcodeValidationResults[getMatrixBarcode(rIdx, cIdx)]?.single === 'loading'" class="badge info">校验中...</span>
+                            <span v-else-if="barcodeValidationResults[getMatrixBarcode(rIdx, cIdx)]?.single === 'success'" class="badge success">校验成功</span>
+                            <span v-else-if="barcodeValidationResults[getMatrixBarcode(rIdx, cIdx)]?.single === 'error'" class="badge error">校验失败</span>
+                            <span v-else class="badge info">等待</span>
+                          </template>
+                          <span v-else>-</span>
+                        </td>
+                        <td class="text-center">
+                          <span class="final-code-item" 
+                               :class="{ 'replaced-zero': getFinalBarcode(rIdx, cIdx).startsWith('000'), 
+                                         'replaced-nine': getFinalBarcode(rIdx, cIdx).startsWith('999') }">
+                            {{ getFinalBarcode(rIdx, cIdx) }}
+                          </span>
+                        </td>
+                      </tr>
+                    </template>
                     <tr v-if="matrixLayers === 0">
-                      <td colspan="8" class="empty-row">等待 PLC 信号触发采集...</td>
+                      <td colspan="6" class="empty-row">等待 PLC 信号触发采集...</td>
                     </tr>
                   </tbody>
                 </table>

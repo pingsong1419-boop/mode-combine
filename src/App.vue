@@ -149,7 +149,7 @@ async function onConfigSaved(newConfig: AppConfig) {
   }
 }
 
-const productCode = ref(localStorage.getItem(PRODUCT_KEY) || '')
+const productCode = ref('')
 const scanInputRef = ref<HTMLInputElement | null>(null)
 const focusScan = () => nextTick(() => scanInputRef.value?.focus())
 
@@ -208,8 +208,6 @@ async function handleScan() {
   const inputSN = code.trim().toUpperCase()
   const currentSN = (orderInfo.value?.code || orderInfo.value?.orderCode || '').trim().toUpperCase()
   const isNewProduct = inputSN && inputSN !== currentSN
-  
-  localStorage.setItem(PRODUCT_KEY, code)
   
   // 智能重置：仅在新 SN 时清空数据
   if (isNewProduct || !orderInfo.value) {

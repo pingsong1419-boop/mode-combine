@@ -368,7 +368,7 @@ const qualityCheckResults = computed(() => {
     
     paramTemplates.forEach((p, pIdx) => {
       let actualValue: any = '-'
-      let result: 'PASS' | 'FAIL' | '-' = '-'
+      let result: 'PASS' | 'FAIL' = 'FAIL'
       const name = p.paramName || ''
       
       // 根据参数名识别并填充实际值
@@ -377,6 +377,8 @@ const qualityCheckResults = computed(() => {
         if (p.maxQualityValue && actualValue !== '-') {
           const allowed = p.maxQualityValue.toString().split(/[;；,，]/).map((v: string) => v.trim())
           result = allowed.includes(actualValue) ? 'PASS' : 'FAIL'
+        } else {
+          result = 'FAIL'
         }
       } else if (name.includes('容量和最大值')) {
         actualValue = actualMax ?? '-'
@@ -384,6 +386,8 @@ const qualityCheckResults = computed(() => {
           const minLimit = p.minQualityValue !== null && p.minQualityValue !== '' ? Number(p.minQualityValue) : -Infinity
           const maxLimit = p.maxQualityValue !== null && p.maxQualityValue !== '' ? Number(p.maxQualityValue) : Infinity
           result = (actualMax >= minLimit && actualMax <= maxLimit) ? 'PASS' : 'FAIL'
+        } else {
+          result = 'FAIL'
         }
       } else if (name.includes('容量和最小值')) {
         actualValue = actualMin ?? '-'
@@ -391,12 +395,16 @@ const qualityCheckResults = computed(() => {
           const minLimit = p.minQualityValue !== null && p.minQualityValue !== '' ? Number(p.minQualityValue) : -Infinity
           const maxLimit = p.maxQualityValue !== null && p.maxQualityValue !== '' ? Number(p.maxQualityValue) : Infinity
           result = (actualMin >= minLimit && actualMin <= maxLimit) ? 'PASS' : 'FAIL'
+        } else {
+          result = 'FAIL'
         }
       } else if (name.includes('档位明细')) {
         actualValue = detail.grade || '-'
         if (p.maxQualityValue && actualValue !== '-') {
           const allowed = p.maxQualityValue.toString().split(/[;；,，]/).map((v: string) => v.trim())
           result = allowed.includes(actualValue) ? 'PASS' : 'FAIL'
+        } else {
+          result = 'FAIL'
         }
       } else if (name.includes('容量差')) {
         actualValue = actualDiff ?? '-'
@@ -404,6 +412,8 @@ const qualityCheckResults = computed(() => {
           const minLimit = p.minQualityValue !== null && p.minQualityValue !== '' ? Number(p.minQualityValue) : -Infinity
           const maxLimit = p.maxQualityValue !== null && p.maxQualityValue !== '' ? Number(p.maxQualityValue) : Infinity
           result = (actualDiff >= minLimit && actualDiff <= maxLimit) ? 'PASS' : 'FAIL'
+        } else {
+          result = 'FAIL'
         }
       }
 

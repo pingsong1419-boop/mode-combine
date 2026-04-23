@@ -72,9 +72,13 @@ function handleCancel() {
                 <label>模组码生成 API</label>
                 <input v-model="form.codeCreateApiUrl" type="text" class="input-field" />
               </div>
-              <div class="field-group">
+               <div class="field-group">
                 <label>信息推送 API</label>
                 <input v-model="form.mesPushApiUrl" type="text" class="input-field" />
+              </div>
+              <div class="field-group">
+                <label>重码校验 API</label>
+                <input v-model="form.duplicateCheckApiUrl" type="text" class="input-field" />
               </div>
             </div>
           </div>

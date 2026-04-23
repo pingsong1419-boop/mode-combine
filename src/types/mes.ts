@@ -14,6 +14,8 @@ export interface AppConfig {
   codeCreateApiUrl?: string
   /** MES 信息推送API */
   mesPushApiUrl?: string
+  /** 重码校验API */
+  duplicateCheckApiUrl?: string
   
   /** 扫码枪 IP */
   scannerIp?: string

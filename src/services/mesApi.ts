@@ -71,3 +71,20 @@ export async function getRouteList(
   }
   return postRequest<GetRouteResponse>(config.routeApiUrl, params)
 }
+/**
+ * 步骤三：单物料校验
+ * @param apiUrl 校验接口地址
+ * @param body 校验请求体
+ */
+export async function checkSingleMaterial(apiUrl: string, body: object): Promise<any> {
+  return postRequest<any>(apiUrl, body)
+}
+
+/**
+ * 步骤四：重码校验
+ * @param apiUrl 校验接口地址
+ * @param body 校验请求体
+ */
+export async function checkDuplicateBarcode(apiUrl: string, body: object): Promise<any> {
+  return postRequest<any>(apiUrl, body)
+}

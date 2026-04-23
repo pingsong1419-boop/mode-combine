@@ -2,7 +2,7 @@
 import { ref, reactive, computed, onMounted, nextTick, onUnmounted } from 'vue'
 import { HubConnectionBuilder, LogLevel, type HubConnection } from '@microsoft/signalr'
 import type { AppConfig, OrderInfo, RouteStep, TestResult, WorkStep } from './types/mes'
-import { getOrderByProcess, getRouteList } from './services/mesApi'
+import { getOrderByProcess, getRouteList, checkSingleMaterial, checkDuplicateBarcode } from './services/mesApi'
 import ConfigModal from './components/ConfigModal.vue'
 import RouteTable from './components/RouteTable.vue'
 import ApiDetail from './components/ApiDetail.vue'
@@ -189,6 +189,7 @@ const plcLogs = ref<any[]>([]) // 专门存储 PLC 监控原始数据
 const apiRecords = ref<ApiRecord[]>([])
 const currentBarcodes = ref<string[]>([]) // 新增：存储读取到的电芯条码
 const activeTab = ref<'route' | 'api' | 'log' | 'material' | 'plc' | 'recipe' | 'monitor'>('route')
+const barcodeValidationResults = reactive<Record<string, { single: string, duplicate: string }>>({})
 
 function addLog(level: any, msg: string) {
   logs.value.unshift({ time: new Date().toLocaleTimeString(), level, msg })
@@ -336,7 +337,6 @@ function isLayerValid(layerIdx: number): boolean {
 function isBarcodeValid(code: string): boolean {
   if (!code || !routeSteps.value.length) return false
   
-  // 展平所有工步中的物料规则
   const rules = routeSteps.value.flatMap(seq => 
     (seq.workStepList || []).flatMap(ws => 
       ((ws as any).workStepMaterialList || [])
@@ -348,6 +348,106 @@ function isBarcodeValid(code: string): boolean {
     const lengthMatch = rule.noLength > 0 ? code.length === Number(rule.noLength) : true
     return prefixMatch && lengthMatch
   })
+}
+
+/** 异步执行单物料和重码校验 */
+async function runBarcodeValidations(barcode: string) {
+  if (!barcode || !orderInfo.value) return
+  
+  // 初始化状态为“进行中”
+  barcodeValidationResults[barcode] = { single: 'loading', duplicate: 'loading' }
+
+  const barcodeTail = barcode.slice(-8)
+
+  // 1. 单物料校验 - 构造记录与调用
+  if (config.value.singleMaterialApiUrl) {
+    const t0 = Date.now()
+    const rec = reactive<ApiRecord>({
+      title: `单物料校验 [${barcodeTail}]`,
+      url: config.value.singleMaterialApiUrl,
+      status: 'pending',
+      time: new Date().toLocaleTimeString(),
+      reqBody: {
+        produceOrderCode: orderInfo.value.code || orderInfo.value.orderCode,
+        routeNo: orderInfo.value.route_No,
+        technicsProcessCode: config.value.technicsProcessCode,
+        materialCode: barcode,
+        tenantID: orderInfo.value.tenantID || config.value.tenantID
+      }
+    })
+    apiRecords.value.unshift(rec)
+
+    checkSingleMaterial(config.value.singleMaterialApiUrl, rec.reqBody)
+      .then(res => {
+        const msg = JSON.stringify(res)
+        barcodeValidationResults[barcode].single = msg.includes('校验成功') ? 'success' : 'error'
+        rec.status = 'success'
+        rec.resBody = res
+        rec.duration = Date.now() - t0
+      })
+      .catch(err => { 
+        barcodeValidationResults[barcode].single = 'error'
+        rec.status = 'error'
+        rec.resBody = { error: err.message }
+      })
+  }
+
+  // 2. 重码校验 - 构造记录与调用
+  if (config.value.duplicateCheckApiUrl) {
+    const t0 = Date.now()
+    const rec = reactive<ApiRecord>({
+      title: `重码校验 [${barcodeTail}]`,
+      url: config.value.duplicateCheckApiUrl,
+      status: 'pending',
+      time: new Date().toLocaleTimeString(),
+      reqBody: {
+        processCode: config.value.technicsProcessCode,
+        code: barcode,
+        type: '1'
+      }
+    })
+    apiRecords.value.unshift(rec)
+
+    checkDuplicateBarcode(config.value.duplicateCheckApiUrl, rec.reqBody)
+      .then(res => {
+        const msg = JSON.stringify(res)
+        barcodeValidationResults[barcode].duplicate = msg.includes('未检测到重码信息') ? 'success' : 'error'
+        rec.status = 'success'
+        rec.resBody = res
+        rec.duration = Date.now() - t0
+      })
+      .catch(err => { 
+        barcodeValidationResults[barcode].duplicate = 'error'
+        rec.status = 'error'
+        rec.resBody = { error: err.message }
+      })
+  }
+}
+
+/** 判定某一层是否全部通过单物料校验 */
+function isLayerSingleValid(layerIdx: number): string {
+  let hasLoading = false
+  for (let col = 0; col < 3; col++) {
+    const code = getMatrixBarcode(layerIdx, col)
+    if (!code) continue
+    const status = barcodeValidationResults[code]?.single
+    if (status === 'error') return 'error'
+    if (status === 'loading') hasLoading = true
+  }
+  return hasLoading ? 'loading' : 'success'
+}
+
+/** 判定某一层是否全部通过重码校验 */
+function isLayerDuplicateValid(layerIdx: number): string {
+  let hasLoading = false
+  for (let col = 0; col < 3; col++) {
+    const code = getMatrixBarcode(layerIdx, col)
+    if (!code) continue
+    const status = barcodeValidationResults[code]?.duplicate
+    if (status === 'error') return 'error'
+    if (status === 'loading') hasLoading = true
+  }
+  return hasLoading ? 'loading' : 'success'
 }
 
 async function fetchRouteList(routeCode: string) {
@@ -389,7 +489,15 @@ async function fetchRouteList(routeCode: string) {
     }
     
     routeSteps.value = steps
-    addLog('success', `获取到 ${steps.length} 条工步`)
+    addLog('success', `获取到 ${steps.length} 条工步，开始校验条码矩阵...`)
+    
+    // 关键：工单和工步加载完成后，触发所有当前条码的校验
+    if (currentBarcodes.value.length > 0) {
+      currentBarcodes.value.forEach(code => {
+        if (code) runBarcodeValidations(code)
+      })
+    }
+    
     activeTab.value = 'material'
   } catch (err: any) {
     apiRecords.value[0] = { ...apiRecords.value[0], status: 'error' }
@@ -495,7 +603,7 @@ function resetResult() {
               <span class="info-value mono">{{ orderInfo.route_No }}</span>
             </div>
             <div class="info-item">
-              <span class="info-label">产品条码</span>
+              <span class="info-label">工单编码</span>
               <span class="info-value mono highlight-sn">{{ orderInfo?.code || productCode || '等待获取...' }}</span>
             </div>
             <template v-for="(val, key) in orderInfo" :key="key">
@@ -601,12 +709,24 @@ function resetResult() {
                         <span v-else-if="getMatrixBarcode(i-1, 0)" class="badge error">验证中</span>
                         <span v-else>-</span>
                       </td>
+                      <!-- 重码校验 (按层级汇总) -->
                       <td class="text-center">
-                        <span v-if="getMatrixBarcode(i-1, 0)" class="badge info">等待</span>
+                        <template v-if="getMatrixBarcode(i-1, 0)">
+                          <span v-if="isLayerDuplicateValid(i-1) === 'loading'" class="badge info">校验中...</span>
+                          <span v-else-if="isLayerDuplicateValid(i-1) === 'success'" class="badge success">通过</span>
+                          <span v-else-if="isLayerDuplicateValid(i-1) === 'error'" class="badge error">失败</span>
+                          <span v-else class="badge info">等待</span>
+                        </template>
                         <span v-else>-</span>
                       </td>
+                      <!-- 单物料校验 (按层级汇总) -->
                       <td class="text-center">
-                        <span v-if="getMatrixBarcode(i-1, 0)" class="badge info">等待</span>
+                        <template v-if="getMatrixBarcode(i-1, 0)">
+                          <span v-if="isLayerSingleValid(i-1) === 'loading'" class="badge info">校验中...</span>
+                          <span v-else-if="isLayerSingleValid(i-1) === 'success'" class="badge success">校验成功</span>
+                          <span v-else-if="isLayerSingleValid(i-1) === 'error'" class="badge error">校验失败</span>
+                          <span v-else class="badge info">等待</span>
+                        </template>
                         <span v-else>-</span>
                       </td>
                     </tr>

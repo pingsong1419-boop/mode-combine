@@ -87,6 +87,7 @@ C:\Users\95403\.gemini\模拟堆叠站\backend\MesScanner.Backend\obj\Debug\net8
 C:\Users\95403\.gemini\模拟堆叠站\backend\MesScanner.Backend\obj\Debug\net8.0\MesScanner.Backend.csproj.CoreCompileInputs.cache
 C:\Users\95403\.gemini\模拟堆叠站\backend\MesScanner.Backend\obj\Debug\net8.0\MesScanner.Backend.MvcApplicationPartsAssemblyInfo.cs
 C:\Users\95403\.gemini\模拟堆叠站\backend\MesScanner.Backend\obj\Debug\net8.0\MesScanner.Backend.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\95403\.gemini\模拟堆叠站\backend\MesScanner.Backend\obj\Debug\net8.0\MesScanner.Backend.sourcelink.json
 C:\Users\95403\.gemini\模拟堆叠站\backend\MesScanner.Backend\obj\Debug\net8.0\staticwebassets.build.json
 C:\Users\95403\.gemini\模拟堆叠站\backend\MesScanner.Backend\obj\Debug\net8.0\staticwebassets.development.json
 C:\Users\95403\.gemini\模拟堆叠站\backend\MesScanner.Backend\obj\Debug\net8.0\staticwebassets\msbuild.MesScanner.Backend.Microsoft.AspNetCore.StaticWebAssets.props

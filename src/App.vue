@@ -1,5 +1,5 @@
-﻿<script setup lang="ts">
-import { ref, reactive, onMounted, nextTick, onUnmounted } from 'vue'
+<script setup lang="ts">
+import { ref, reactive, computed, onMounted, nextTick, onUnmounted } from 'vue'
 import { HubConnectionBuilder, LogLevel, type HubConnection } from '@microsoft/signalr'
 import type { AppConfig, OrderInfo, RouteStep, TestResult, WorkStep } from './types/mes'
 import { getOrderByProcess, getRouteList } from './services/mesApi'
@@ -77,7 +77,7 @@ async function initSignalR() {
 
   // 新增：监听后端发送的自动触发信号
   hubConnection.on('ReceivePlcTrigger', async (data: any) => {
-    addLog('info', `[PLC自动触发] 收到 ${data.side} 堆叠完成信号 (当前层数: ${data.layers})，正在采集条码...`);
+    addLog('info', `[PLC自动触发] 收到 ${data.side} 堆叠完成信号，正在采集电芯条码...`);
     
     // 1. 批量读取条码逻辑
     try {
@@ -95,14 +95,18 @@ async function initSignalR() {
       if (res.ok) {
         const result = await res.json()
         currentBarcodes.value = result.barcodes
-        addLog('success', '✅ 电芯条码采集完成: 共读取 ' + result.barcodes.length + ' 个条码');
+        addLog('success', '✅ 采集矩阵已更新，共读取 ' + result.barcodes.length + ' 个条码');
+
+        // 2. 自动代替人工扫码：使用第一个条码作为产品 SN 触发业务流
+        if (result.barcodes.length > 0) {
+          productCode.value = result.barcodes[0]
+          addLog('info', `[自动触发] 正在使用首个条码 [${productCode.value}] 拉取工单...`)
+          handleScan()
+        }
       }
     } catch (err) {
-      addLog('error', '❌ 批量读取条码失败');
+      addLog('error', '❌ 自动采集条码或触发业务流失败');
     }
-
-    // 2. 执行后续任务流程
-    handleScan()
   })
 
   try {
@@ -303,6 +307,47 @@ async function onOrderSelected(order: OrderInfo) {
 function simulatePlcTrigger() {
   addLog('info', '手动收到 PLC 触发信号 (模拟)')
   handleScan()
+}
+
+// 计算总层数
+const matrixLayers = computed(() => {
+  if (currentBarcodes.value.length === 0) return 0
+  return Math.ceil(currentBarcodes.value.length / 3)
+})
+
+// 获取指定层、指定列的条码
+function getMatrixBarcode(layerIdx: number, colIdx: number): string {
+  // 假设存储结构是：前 L 个是第 1 列，中间 L 个是第 2 列...
+  const layers = matrixLayers.value
+  const targetIdx = layerIdx + (colIdx * layers)
+  return currentBarcodes.value[targetIdx] || ''
+}
+
+// 校验某一层的所有条码是否都符合规则
+function isLayerValid(layerIdx: number): boolean {
+  for (let col = 0; col < 3; col++) {
+    const code = getMatrixBarcode(layerIdx, col)
+    if (code && !isBarcodeValid(code)) return false
+  }
+  return true
+}
+
+// 校验函数：判断单个条码是否符合物料规则（前缀+长度）
+function isBarcodeValid(code: string): boolean {
+  if (!code || !routeSteps.value.length) return false
+  
+  // 展平所有工步中的物料规则
+  const rules = routeSteps.value.flatMap(seq => 
+    (seq.workStepList || []).flatMap(ws => 
+      ((ws as any).workStepMaterialList || [])
+    )
+  )
+
+  return rules.some(rule => {
+    const prefixMatch = code.startsWith(rule.material_No)
+    const lengthMatch = rule.noLength > 0 ? code.length === Number(rule.noLength) : true
+    return prefixMatch && lengthMatch
+  })
 }
 
 async function fetchRouteList(routeCode: string) {
@@ -512,7 +557,12 @@ function resetResult() {
             <RouteTable :steps="routeSteps" :loading="routeLoading" />
           </div>
           <div v-show="activeTab === 'material'" class="tab-pane flex-column">
-            <MaterialScanner :steps="routeSteps" @log="addLog" @complete="setOK" />
+            <MaterialScanner 
+              :steps="routeSteps" 
+              :auto-barcodes="currentBarcodes"
+              @log="addLog" 
+              @complete="setOK" 
+            />
           </div>
           <div v-show="activeTab === 'plc'" class="tab-pane">
             <PlcInteraction 
@@ -554,20 +604,51 @@ function resetResult() {
                 <span class="legend-item"><span class="dot c3"></span> 3列</span>
               </div>
           </div>
-          <div class="barcode-matrix" :class="{ 'empty': currentBarcodes.length === 0 }">
-            <div v-if="currentBarcodes.length === 0" class="empty-placeholder">
-              等待 PLC 信号触发自动采集流程...
-            </div>
-            <div 
-              v-for="(code, idx) in currentBarcodes" 
-              :key="idx" 
-              class="barcode-unit"
-              :class="'col-' + (Math.floor(idx / (currentBarcodes.length / 3)) + 1)"
-            >
-              <span class="unit-idx">{{ idx + 1 }}</span>
-              <span class="unit-code mono">{{ code }}</span>
-            </div>
-          </div>
+        <div class="matrix-table-container">
+          <table class="matrix-table">
+            <thead>
+              <tr>
+                <th width="60">序号</th>
+                <th>1列数据</th>
+                <th>二列数据</th>
+                <th>三列</th>
+                <th>物料编号&长度校验</th>
+                <th>重码校验</th>
+                <th>单物料校验</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="i in matrixLayers" :key="i">
+                <td class="text-center">{{ i }}</td>
+                <td v-for="col in [0, 1, 2]" :key="col" :class="{ 'has-code': getMatrixBarcode(i-1, col) }">
+                  <div class="cell-content">
+                    <span class="barcode-text">{{ getMatrixBarcode(i-1, col) || '-' }}</span>
+                    <span v-if="getMatrixBarcode(i-1, col) && isBarcodeValid(getMatrixBarcode(i-1, col))" class="mini-ok">✓</span>
+                  </div>
+                </td>
+                <!-- 规则校验结果 -->
+                <td class="text-center">
+                  <span v-if="isLayerValid(i-1)" class="badge success">校验成功</span>
+                  <span v-else-if="getMatrixBarcode(i-1, 0)" class="badge error">验证中</span>
+                  <span v-else>-</span>
+                </td>
+                <!-- 重码校验 (占位) -->
+                <td class="text-center">
+                  <span v-if="getMatrixBarcode(i-1, 0)" class="badge info">等待</span>
+                  <span v-else>-</span>
+                </td>
+                <!-- 单物料校验 (占位) -->
+                <td class="text-center">
+                  <span v-if="getMatrixBarcode(i-1, 0)" class="badge info">等待</span>
+                  <span v-else>-</span>
+                </td>
+              </tr>
+              <tr v-if="matrixLayers === 0">
+                <td colspan="7" class="empty-row">等待 PLC 信号触发采集...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         </div>
       </section>
     </main>
@@ -748,21 +829,19 @@ kbd { background: rgba(100, 181, 246, 0.1); border: 1px solid rgba(100, 181, 246
   flex-direction: column; 
   margin-bottom: 8px;
 }
-.barcode-matrix { 
-  flex: 1;
-  display: grid; 
-  grid-template-columns: 1fr;
-  gap: 4px; 
-  margin-top: 10px; 
-  overflow-y: auto !important; 
-  padding-right: 6px;
-}
-.barcode-matrix::-webkit-scrollbar { width: 5px; }
-.barcode-matrix::-webkit-scrollbar-thumb { background: rgba(144, 202, 249, 0.3); border-radius: 3px; }
-.barcode-unit { background: rgba(255, 255, 255, 0.02); border-left: 4px solid #3b82f6; padding: 8px 14px; border-radius: 4px; display: flex; align-items: center; gap: 15px; }
-.barcode-unit.col-1 { border-color: #3b82f6; }
-.barcode-unit.col-2 { border-color: #10b981; }
-.barcode-unit.col-3 { border-color: #f59e0b; }
-.unit-idx { font-size: 11px; color: #546e7a; min-width: 24px; }
-.unit-code { font-size: 13px; color: #ffffff; font-family: "Consolas", monospace; word-break: break-all; }
+.matrix-table-container { flex: 1; overflow-y: auto; border-radius: 8px; background: #0d1117; border: 1px solid rgba(144, 202, 249, 0.1); margin-top: 10px; }
+.matrix-table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+.matrix-table th { background: rgba(13, 71, 161, 0.4); color: #90a4ae; padding: 10px 8px; text-align: left; font-weight: 600; border-bottom: 2px solid rgba(144, 202, 249, 0.2); position: sticky; top: 0; z-index: 10; }
+.matrix-table td { padding: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); color: #e3f2fd; vertical-align: middle; }
+.matrix-table tr:hover { background: rgba(255, 255, 255, 0.03); }
+.cell-content { display: flex; align-items: center; gap: 4px; }
+.barcode-text { font-family: "Consolas", monospace; font-size: 11px; color: #bbdefb; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px; }
+.mini-ok { color: #00e676; font-weight: bold; font-size: 14px; }
+.text-center { text-align: center !important; }
+.badge { font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 700; display: inline-block; }
+.badge.success { background: rgba(0, 230, 118, 0.15); color: #00e676; border: 1px solid rgba(0, 230, 118, 0.3); }
+.badge.error { background: rgba(255, 82, 82, 0.15); color: #ff5252; border: 1px solid rgba(255, 82, 82, 0.3); }
+.badge.info { background: rgba(33, 150, 243, 0.15); color: #2196f3; border: 1px solid rgba(33, 150, 243, 0.3); }
+.empty-row { text-align: center; padding: 60px !important; color: #546e7a; font-style: italic; }
+@keyframes fadeIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
 </style>

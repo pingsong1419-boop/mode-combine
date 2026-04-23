@@ -4,6 +4,7 @@ import type { RouteStep, WorkStep } from '../types/mes'
 
 const props = defineProps<{
   steps: RouteStep[]
+  autoBarcodes?: string[] // PLC 自动采集的条码列表
 }>()
 
 const emit = defineEmits<{
@@ -79,85 +80,64 @@ const isAllCompleted = computed(() => {
   return taskList.value.every(t => t.status === 'completed')
 })
 
-// 添加仿真支持：监听全局条码事件
-onMounted(() => {
-  window.addEventListener('mock:barcode', ((e: CustomEvent) => {
-    scanInput.value = e.detail
-    handleScan()
-  }) as EventListener)
-})
+// 核心逻辑：监听外部（PLC）自动条码变化
+watch(
+  () => props.autoBarcodes,
+  (newBarcodes) => {
+    if (newBarcodes && newBarcodes.length > 0) {
+      // 每次 PLC 触发新条码时，重置旧的匹配记录（可选，根据业务决定，这里选择追加/更新）
+      // addLog('info', `收到 ${newBarcodes.length} 个自动采集条码，开始规则校验...`)
+      
+      newBarcodes.forEach(code => {
+        handleBatchVerify(code)
+      })
+    }
+  },
+  { deep: true }
+)
 
-function handleScan() {
-  const code = scanInput.value.trim()
+function handleBatchVerify(code: string) {
   if (!code) return
 
-  // 匹配逻辑：
-  // 1. 还没完成的 (status === 'pending')
-  // 2. 长度与 noLength 相等（如果 noLength > 0，这里假设必须精确匹配；若无要求则忽略长度）
-  // 3. 前多少位与 material_No 一致
-  
+  // 规则：只要条码的前 N 位能匹配上物料列表中的任意一项即可
   const target = taskList.value.find(t => {
-    if (t.status === 'completed') return false
-    // 长度校验
-    if (t.noLength > 0 && code.length !== t.noLength) return false
-    // 前缀匹配
-    if (!code.startsWith(t.material_No)) return false
-    return true
+    const prefixMatch = code.startsWith(t.material_No)
+    const lengthMatch = t.noLength > 0 ? code.length === Number(t.noLength) : true
+    return prefixMatch && lengthMatch
   })
 
   if (target) {
-    target.scannedCount++
-    target.scannedBarcodes.push(code)
-    
-    // 如果数量达成，置为完成
-    if (target.scannedCount >= target.material_number) {
+    if (!target.scannedBarcodes.includes(code)) {
+      target.scannedBarcodes.push(code)
+      target.scannedCount = target.scannedBarcodes.length
+      
+      // 只要匹配上了，标记该物料项为通过
       target.status = 'completed'
-      emit('log', 'success', `物料扫描匹配成功: ${target.material_Name} (全部完成)`)
-    } else {
-      emit('log', 'success', `物料扫描匹配成功: ${target.material_Name} (${target.scannedCount}/${target.material_number})`)
+      emit('log', 'success', `[自动校验] 条码 ${code} 匹配成功 -> ${target.material_Name}`)
     }
     
     // 检查是否全局完成
     if (isAllCompleted.value) {
-      emit('log', 'success', '🎉 所有物料验证已全部通过！')
-      emit('complete') // 通知主界面
+      emit('log', 'success', '🎉 采集矩阵所有条码验证通过！')
+      emit('complete')
     }
   } else {
-    emit('log', 'error', `扫码无匹配物料或该物料已扫完: ${code}`)
+    emit('log', 'warn', `[自动校验] 条码 ${code} 未能匹配规则 (前缀或长度不符)`)
   }
-
-  // 清空输入框以便连续扫码
-  scanInput.value = ''
 }
 </script>
 
 <template>
   <div class="material-scanner-panel">
-    <div class="scan-action-bar">
-      <div class="scan-input-wrapper">
-        <span class="icon">🔍</span>
-        <input
-          ref="inputRef"
-          type="text"
-          class="scan-input"
-          v-model="scanInput"
-          @keyup.enter="handleScan"
-          placeholder="请使用扫码枪扫描物料条码以验证组件..."
-          autocomplete="off"
-          :disabled="isAllCompleted || !taskList.length"
-        />
-        <button 
-          class="submit-btn" 
-          @click="handleScan"
-          :disabled="isAllCompleted || !taskList.length"
-        >验证</button>
+    <!-- 移除手动扫码控件，改为自动状态显示 -->
+    <div class="auto-verify-status" v-if="taskList.length">
+      <div class="status-indicator">
+        <span class="label">校验状态:</span>
+        <span v-if="isAllCompleted" class="all-ok">✅ 全部通过</span>
+        <span v-else-if="autoBarcodes && autoBarcodes.length > 0" class="processing">⚙️ 正在校验采集矩阵...</span>
+        <span v-else class="pending">⏳ 等待 PLC 条码矩阵数据...</span>
       </div>
-      
-      <div class="progress-status" v-if="taskList.length">
-        状态: 
-        <span v-if="isAllCompleted" class="status-all-done">✅ 全部验证通过</span>
-        <span v-else class="status-pending">⏳ 等待验证 ({{ taskList.filter(t => t.status === 'completed').length }}/{{ taskList.length }})</span>
-      </div>
+      <div class="rule-hint">规则：前缀匹配 + 长度校验</div>
     </div>
 
     <!-- 空状态 -->
@@ -228,61 +208,36 @@ function handleScan() {
   height: 100%;
 }
 
-.scan-action-bar {
+.auto-verify-status {
+  padding: 15px 20px;
+  background: rgba(13, 71, 161, 0.2);
+  border-bottom: 1px solid rgba(100, 181, 246, 0.2);
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  padding: 12px 14px;
-  background: rgba(13, 71, 161, 0.15);
-  border-bottom: 1px solid rgba(100, 181, 246, 0.1);
-  gap: 16px;
-  flex-shrink: 0;
+  align-items: center;
 }
 
-.scan-input-wrapper {
-  flex: 1;
-  max-width: 500px;
+.status-indicator {
   display: flex;
   align-items: center;
-  background: #0d1117;
-  border: 1px solid rgba(100, 181, 246, 0.3);
-  border-radius: 6px;
-  padding: 4px 6px;
+  gap: 10px;
+  font-weight: 700;
 }
 
-.scan-input-wrapper:focus-within {
-  border-color: #42a5f5;
-  box-shadow: 0 0 0 2px rgba(66, 165, 245, 0.2);
-}
+.status-indicator .label { color: #90a4ae; font-size: 13px; }
+.status-indicator .all-ok { color: #00e676; }
+.status-indicator .processing { color: #42a5f5; animation: blink 1s infinite; }
+.status-indicator .pending { color: #ffab40; }
 
-.scan-input-wrapper .icon {
-  margin: 0 8px;
-  opacity: 0.6;
-}
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
 
-.scan-input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  color: #e3f2fd;
-  font-family: inherit;
-  font-size: 14px;
-  outline: none;
-}
-.scan-input:disabled { opacity: 0.5; }
-
-.submit-btn {
-  background: #1976d2;
-  color: white;
-  border: none;
-  padding: 6px 14px;
+.rule-hint {
+  font-size: 11px;
+  color: #546e7a;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 2px 8px;
   border-radius: 4px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: all 0.2s;
 }
-.submit-btn:hover:not(:disabled) { background: #1565c0; }
-.submit-btn:disabled { background: #37474f; color: #78909c; cursor: not-allowed; }
 
 .progress-status {
   font-size: 13px;

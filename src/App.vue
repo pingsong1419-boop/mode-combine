@@ -563,6 +563,60 @@ function resetResult() {
               @log="addLog" 
               @complete="setOK" 
             />
+            
+            <!-- 底部条码矩阵显示 (仅在物料验证页显示) -->
+            <div class="barcode-display-card flex-grow">
+              <div class="card-title">
+                <span class="step-badge">5</span> 电芯码采集矩阵 ({{ currentBarcodes.length }} 颗)
+                <div class="matrix-legend">
+                    <span class="legend-item"><span class="dot c1"></span> 1列</span>
+                    <span class="legend-item"><span class="dot c2"></span> 2列</span>
+                    <span class="legend-item"><span class="dot c3"></span> 3列</span>
+                  </div>
+              </div>
+              <div class="matrix-table-container">
+                <table class="matrix-table">
+                  <thead>
+                    <tr>
+                      <th width="60">序号</th>
+                      <th>1列数据</th>
+                      <th>二列数据</th>
+                      <th>三列</th>
+                      <th>物料编号&长度校验</th>
+                      <th>重码校验</th>
+                      <th>单物料校验</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="i in matrixLayers" :key="i">
+                      <td class="text-center">{{ i }}</td>
+                      <td v-for="col in [0, 1, 2]" :key="col" :class="{ 'has-code': getMatrixBarcode(i-1, col) }">
+                        <div class="cell-content">
+                          <span class="barcode-text" :title="getMatrixBarcode(i-1, col)">{{ getMatrixBarcode(i-1, col) || '-' }}</span>
+                          <span v-if="getMatrixBarcode(i-1, col) && isBarcodeValid(getMatrixBarcode(i-1, col))" class="mini-ok">✓</span>
+                        </div>
+                      </td>
+                      <td class="text-center">
+                        <span v-if="isLayerValid(i-1)" class="badge success">校验成功</span>
+                        <span v-else-if="getMatrixBarcode(i-1, 0)" class="badge error">验证中</span>
+                        <span v-else>-</span>
+                      </td>
+                      <td class="text-center">
+                        <span v-if="getMatrixBarcode(i-1, 0)" class="badge info">等待</span>
+                        <span v-else>-</span>
+                      </td>
+                      <td class="text-center">
+                        <span v-if="getMatrixBarcode(i-1, 0)" class="badge info">等待</span>
+                        <span v-else>-</span>
+                      </td>
+                    </tr>
+                    <tr v-if="matrixLayers === 0">
+                      <td colspan="7" class="empty-row">等待 PLC 信号触发采集...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
           <div v-show="activeTab === 'plc'" class="tab-pane">
             <PlcInteraction 
@@ -594,62 +648,6 @@ function resetResult() {
 
         </div>
 
-        <!-- 底部条码矩阵显示 -->
-        <div class="barcode-display-card">
-          <div class="card-title">
-            <span class="step-badge">5</span> 电芯码采集矩阵 ({{ currentBarcodes.length }} 颗)
-            <div class="matrix-legend">
-                <span class="legend-item"><span class="dot c1"></span> 1列</span>
-                <span class="legend-item"><span class="dot c2"></span> 2列</span>
-                <span class="legend-item"><span class="dot c3"></span> 3列</span>
-              </div>
-          </div>
-        <div class="matrix-table-container">
-          <table class="matrix-table">
-            <thead>
-              <tr>
-                <th width="60">序号</th>
-                <th>1列数据</th>
-                <th>二列数据</th>
-                <th>三列</th>
-                <th>物料编号&长度校验</th>
-                <th>重码校验</th>
-                <th>单物料校验</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="i in matrixLayers" :key="i">
-                <td class="text-center">{{ i }}</td>
-                <td v-for="col in [0, 1, 2]" :key="col" :class="{ 'has-code': getMatrixBarcode(i-1, col) }">
-                  <div class="cell-content">
-                    <span class="barcode-text">{{ getMatrixBarcode(i-1, col) || '-' }}</span>
-                    <span v-if="getMatrixBarcode(i-1, col) && isBarcodeValid(getMatrixBarcode(i-1, col))" class="mini-ok">✓</span>
-                  </div>
-                </td>
-                <!-- 规则校验结果 -->
-                <td class="text-center">
-                  <span v-if="isLayerValid(i-1)" class="badge success">校验成功</span>
-                  <span v-else-if="getMatrixBarcode(i-1, 0)" class="badge error">验证中</span>
-                  <span v-else>-</span>
-                </td>
-                <!-- 重码校验 (占位) -->
-                <td class="text-center">
-                  <span v-if="getMatrixBarcode(i-1, 0)" class="badge info">等待</span>
-                  <span v-else>-</span>
-                </td>
-                <!-- 单物料校验 (占位) -->
-                <td class="text-center">
-                  <span v-if="getMatrixBarcode(i-1, 0)" class="badge info">等待</span>
-                  <span v-else>-</span>
-                </td>
-              </tr>
-              <tr v-if="matrixLayers === 0">
-                <td colspan="7" class="empty-row">等待 PLC 信号触发采集...</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        </div>
       </section>
     </main>
     <ConfigModal v-model="config" v-model:visible="showConfig" @save="onConfigSaved" />
@@ -819,16 +817,18 @@ kbd { background: rgba(100, 181, 246, 0.1); border: 1px solid rgba(100, 181, 246
 }
 
 .barcode-display-card { 
-  margin-top: 16px; 
+  margin-top: 12px; 
   background: rgba(13, 17, 23, 0.6); 
   border: 1px solid rgba(144, 202, 249, 0.15); 
   border-radius: 8px; 
   padding: 12px; 
-  height: 220px; 
   display: flex; 
   flex-direction: column; 
   margin-bottom: 8px;
+  flex: 1;
+  min-height: 480px;
 }
+.flex-grow { flex: 1; }
 .matrix-table-container { flex: 1; overflow-y: auto; border-radius: 8px; background: #0d1117; border: 1px solid rgba(144, 202, 249, 0.1); margin-top: 10px; }
 .matrix-table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
 .matrix-table th { background: rgba(13, 71, 161, 0.4); color: #90a4ae; padding: 10px 8px; text-align: left; font-weight: 600; border-bottom: 2px solid rgba(144, 202, 249, 0.2); position: sticky; top: 0; z-index: 10; }

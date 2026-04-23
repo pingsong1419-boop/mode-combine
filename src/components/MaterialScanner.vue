@@ -150,15 +150,10 @@ function handleBatchVerify(code: string) {
       <table>
         <thead>
           <tr>
-            <th style="width: 40px">序号</th>
-            <th>物料编号</th>
+            <th style="width: 50px">序号</th>
+            <th width="150">物料编号</th>
             <th>物料名称</th>
-            <th style="width: 60px" class="center">需求数</th>
-            <th style="width: 60px" class="center">条码长度</th>
-            <th style="width: 80px" class="center">追溯类型</th>
-            <th style="width: 80px" class="center">已扫数量</th>
-            <th style="width: 60px" class="center">状态</th>
-            <th>已匹配条码</th>
+            <th width="100" class="center">条码长度</th>
           </tr>
         </thead>
         <tbody>
@@ -166,34 +161,13 @@ function handleBatchVerify(code: string) {
             v-for="(task, idx) in taskList" 
             :key="task.uid"
             class="data-row"
-            :class="{ 'done-row': task.status === 'completed' }"
           >
             <td>
-              <span class="seq-badge" :class="{ 'done-badge': task.status === 'completed' }">{{ idx + 1 }}</span>
+              <span class="seq-badge">{{ idx + 1 }}</span>
             </td>
             <td class="mono c-blue">{{ task.material_No }}</td>
             <td class="mat-name">{{ task.material_Name }}</td>
-            <td class="center req-num">{{ task.material_number }}</td>
-            <td class="center">{{ task.noLength > 0 ? task.noLength : '—' }}</td>
-            <td class="center">{{ task.retrospect_Type ?? '—' }}</td>
-            
-            <td class="center">
-              <span class="scan-count" :class="{ 'full': task.scannedCount >= task.material_number, 'partial': task.scannedCount > 0 && task.scannedCount < task.material_number }">
-                {{ task.scannedCount }}
-              </span>
-            </td>
-            
-            <td class="center">
-               <span v-if="task.status === 'completed'" class="status-tag success">通过</span>
-               <span v-else class="status-tag pending">待扫</span>
-            </td>
-            
-            <!-- 显示匹配到的条码，多个就折行 -->
-            <td class="barcodes-cell mono small">
-               <div v-for="(code, i) in task.scannedBarcodes" :key="i" class="code-item">
-                 {{ code }}
-               </div>
-            </td>
+            <td class="center mono">{{ task.noLength > 0 ? task.noLength : '—' }}</td>
           </tr>
         </tbody>
       </table>

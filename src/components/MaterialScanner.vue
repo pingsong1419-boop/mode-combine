@@ -152,8 +152,8 @@ function handleBatchVerify(code: string) {
           <tr>
             <th style="width: 50px">序号</th>
             <th width="150">物料编号</th>
-            <th>物料名称</th>
-            <th width="100" class="center">条码长度</th>
+            <th width="300">物料名称</th>
+            <th class="left">条码长度</th>
           </tr>
         </thead>
         <tbody>
@@ -167,7 +167,7 @@ function handleBatchVerify(code: string) {
             </td>
             <td class="mono c-blue">{{ task.material_No }}</td>
             <td class="mat-name">{{ task.material_Name }}</td>
-            <td class="center mono">{{ task.noLength > 0 ? task.noLength : '—' }}</td>
+            <td class="left mono">{{ task.noLength > 0 ? task.noLength : '—' }}</td>
           </tr>
         </tbody>
       </table>

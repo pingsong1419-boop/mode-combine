@@ -831,10 +831,10 @@ kbd { background: rgba(100, 181, 246, 0.1); border: 1px solid rgba(100, 181, 246
 .flex-grow { flex: 1; }
 .matrix-table-container { flex: 1; overflow-y: auto; border-radius: 8px; background: #0d1117; border: 1px solid rgba(144, 202, 249, 0.1); margin-top: 10px; }
 .matrix-table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
-.matrix-table th { background: rgba(13, 71, 161, 0.4); color: #90a4ae; padding: 10px 8px; text-align: left; font-weight: 600; border-bottom: 2px solid rgba(144, 202, 249, 0.2); position: sticky; top: 0; z-index: 10; }
-.matrix-table td { padding: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); color: #e3f2fd; vertical-align: middle; }
+.matrix-table th { background: rgba(13, 71, 161, 0.4); color: #90a4ae; padding: 10px 8px; text-align: center; font-weight: 600; border-bottom: 2px solid rgba(144, 202, 249, 0.2); position: sticky; top: 0; z-index: 10; }
+.matrix-table td { padding: 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); color: #e3f2fd; vertical-align: middle; text-align: center; }
 .matrix-table tr:hover { background: rgba(255, 255, 255, 0.03); }
-.cell-content { display: flex; align-items: center; gap: 4px; }
+.cell-content { display: flex; align-items: center; justify-content: center; gap: 4px; }
 .barcode-text { font-family: "Consolas", monospace; font-size: 11px; color: #bbdefb; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px; }
 .mini-ok { color: #00e676; font-weight: bold; font-size: 14px; }
 .text-center { text-align: center !important; }

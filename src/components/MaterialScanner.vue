@@ -5,6 +5,7 @@ import type { RouteStep, WorkStep } from '../types/mes'
 const props = defineProps<{
   steps: RouteStep[]
   autoBarcodes?: string[] // PLC 自动采集的条码列表
+  forceComplete?: boolean // 新增：由外部矩阵状态决定的强制完成标志
 }>()
 
 const emit = defineEmits<{
@@ -76,8 +77,16 @@ watch(
 )
 
 const isAllCompleted = computed(() => {
+  // 优先级 1：如果外部传入矩阵校验已完成，则直接判定为完成
+  if (props.forceComplete) return true
+  
+  // 优先级 2：传统的 BOM 清单匹配校验
   if (taskList.value.length === 0) return false
   return taskList.value.every(t => t.status === 'completed')
+})
+
+watch(isAllCompleted, (val) => {
+  if (val) emit('complete')
 })
 
 // 核心逻辑：监听外部（PLC）自动条码变化
@@ -93,7 +102,7 @@ watch(
       })
     }
   },
-  { deep: true }
+  { immediate: true, deep: true }
 )
 
 function handleBatchVerify(code: string) {
@@ -118,10 +127,13 @@ function handleBatchVerify(code: string) {
     
     // 检查是否全局完成
     if (isAllCompleted.value) {
-      emit('log', 'success', '🎉 采集矩阵所有条码验证通过！')
       emit('complete')
     }
   } else {
+    // 即使没匹配到，也要检查是否已经全部完成（可能之前已经完成了）
+    if (isAllCompleted.value) {
+      emit('complete')
+    }
     emit('log', 'warn', `[自动校验] 条码 ${code} 未能匹配规则 (前缀或长度不符)`)
   }
 }
@@ -133,8 +145,8 @@ function handleBatchVerify(code: string) {
     <div class="auto-verify-status" v-if="taskList.length">
       <div class="status-indicator">
         <span class="label">校验状态:</span>
-        <span v-if="isAllCompleted" class="all-ok">✅ 全部通过</span>
-        <span v-else-if="autoBarcodes && autoBarcodes.length > 0" class="processing">⚙️ 正在校验采集矩阵...</span>
+        <span v-if="isAllCompleted" class="all-ok">✅ 校验完成</span>
+        <span v-else-if="autoBarcodes && autoBarcodes.length > 0" class="processing">⚙️ 正在校验中...</span>
         <span v-else class="pending">⏳ 等待 PLC 条码矩阵数据...</span>
       </div>
       <div class="rule-hint">规则：前缀匹配 + 长度校验</div>
@@ -161,12 +173,18 @@ function handleBatchVerify(code: string) {
             v-for="(task, idx) in taskList" 
             :key="task.uid"
             class="data-row"
+            :class="{ 'done-row': task.status === 'completed' }"
           >
             <td>
-              <span class="seq-badge">{{ idx + 1 }}</span>
+              <span class="seq-badge" :class="{ 'done-badge': task.status === 'completed' }">
+                {{ task.status === 'completed' ? '✓' : idx + 1 }}
+              </span>
             </td>
             <td class="mono c-blue">{{ task.material_No }}</td>
-            <td class="mat-name">{{ task.material_Name }}</td>
+            <td class="mat-name">
+              {{ task.material_Name }}
+              <span v-if="task.status === 'completed'" class="done-tag">已通过</span>
+            </td>
             <td class="left mono">{{ task.noLength > 0 ? task.noLength : '—' }}</td>
           </tr>
         </tbody>
@@ -199,7 +217,7 @@ function handleBatchVerify(code: string) {
 }
 
 .status-indicator .label { color: #90a4ae; font-size: 13px; }
-.status-indicator .all-ok { color: #00e676; }
+.status-indicator .all-ok { color: #00e676; font-size: 16px; }
 .status-indicator .processing { color: #42a5f5; animation: blink 1s infinite; }
 .status-indicator .pending { color: #ffab40; }
 
@@ -276,6 +294,16 @@ td {
 .c-blue { color: #64b5f6; }
 .mat-name { font-weight: 500; color: #e0e6ed; }
 .req-num { font-weight: 600; color: #90caf9; }
+
+.done-tag {
+  font-size: 10px;
+  background: rgba(0, 230, 118, 0.1);
+  color: #00e676;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  border: 1px solid rgba(0, 230, 118, 0.2);
+}
 
 .seq-badge {
   display: inline-flex;

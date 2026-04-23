@@ -188,7 +188,7 @@ const logs = ref<any[]>([])
 const plcLogs = ref<any[]>([]) // 专门存储 PLC 监控原始数据
 const apiRecords = ref<ApiRecord[]>([])
 const currentBarcodes = ref<string[]>([]) // 新增：存储读取到的电芯条码
-const activeTab = ref<'route' | 'api' | 'log' | 'material' | 'plc' | 'recipe' | 'monitor'>('route')
+const activeTab = ref<'route' | 'api' | 'log' | 'material' | 'info' | 'plc' | 'recipe' | 'monitor'>('route')
 const barcodeValidationResults = reactive<Record<string, { single: string, duplicate: string }>>({})
 
 function addLog(level: any, msg: string) {
@@ -478,6 +478,27 @@ function getFinalBarcode(layerIdx: number, colIdx: number): string {
   return originalCode
 }
 
+/** 判定整个矩阵是否已经完全采集并校验完成 */
+const isMatrixFullyValidated = computed(() => {
+  if (matrixLayers.value === 0) return false
+  for (let col = 0; col < 3; col++) {
+    for (let row = 0; row < matrixLayers.value; row++) {
+      const code = getMatrixBarcode(row, col)
+      if (!code) return false // 任何一个位置为空则未完成
+      
+      const res = barcodeValidationResults[code]
+      // 只有规则校验通过，且单物料和重码校验不是 loading 状态，才算该条码处理完成
+      const ruleValid = isBarcodeValid(code)
+      if (!ruleValid) continue // 如果规则校验失败，该条码已处于确定状态（全0），继续检查下一个
+      
+      if (!res || res.single === 'loading' || res.duplicate === 'loading') {
+        return false
+      }
+    }
+  }
+  return true
+})
+
 async function fetchRouteList(routeCode: string) {
   routeLoading.value = true
   const t0 = Date.now()
@@ -537,6 +558,7 @@ function setOK() {
   testResult.value = 'OK'
   resultMessage.value = '测试综合判定通过'
   addLog('success', '人工判定 OK')
+  activeTab.value = 'info' // 验证完成后自动跳转到“获取信息”标签页
 }
 
 function setNG() {
@@ -668,6 +690,9 @@ function resetResult() {
           <button class="tab-btn" :class="{ active: activeTab === 'material' }" @click="activeTab = 'material'">
             <span>📦</span> 物料验证
           </button>
+          <button class="tab-btn" :class="{ active: activeTab === 'info' }" @click="activeTab = 'info'">
+            <span>ℹ️</span> 获取信息
+          </button>
           <button class="tab-btn" :class="{ active: activeTab === 'plc' }" @click="activeTab = 'plc'">
             <span>💻</span> PLC交互
           </button>
@@ -696,6 +721,7 @@ function resetResult() {
             <MaterialScanner 
               :steps="routeSteps" 
               :auto-barcodes="currentBarcodes"
+              :force-complete="isMatrixFullyValidated"
               @log="addLog" 
               @complete="setOK" 
             />
@@ -703,12 +729,7 @@ function resetResult() {
             <!-- 底部条码矩阵显示 (仅在物料验证页显示) -->
             <div class="barcode-display-card flex-grow">
               <div class="card-title">
-                <span class="step-badge">5</span> 电芯码采集矩阵 ({{ currentBarcodes.length }} 颗)
-                <div class="matrix-legend">
-                    <span class="legend-item"><span class="dot c1"></span> 1列</span>
-                    <span class="legend-item"><span class="dot c2"></span> 2列</span>
-                    <span class="legend-item"><span class="dot c3"></span> 3列</span>
-                  </div>
+                电芯采集矩阵
               </div>
               <div class="matrix-table-container">
                 <table class="matrix-table">
@@ -771,6 +792,15 @@ function resetResult() {
                     </tr>
                   </tbody>
                 </table>
+              </div>
+            </div>
+          </div>
+          <div v-show="activeTab === 'info'" class="tab-pane">
+            <div class="card" style="margin: 20px; border-style: dashed;">
+              <div class="card-title">ℹ️ 采集信息详情</div>
+              <div class="empty-hint" style="padding: 40px;">
+                正在开发中... <br/>
+                此区域将用于展示更详细的工序采集数据。
               </div>
             </div>
           </div>

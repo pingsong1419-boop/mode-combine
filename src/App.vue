@@ -187,7 +187,7 @@ const logs = ref<any[]>([])
 const plcLogs = ref<any[]>([]) // 专门存储 PLC 监控原始数据
 const apiRecords = ref<ApiRecord[]>([])
 const currentBarcodes = ref<string[]>([]) // 新增：存储读取到的电芯条码
-const activeTab = ref<'route' | 'api' | 'log' | 'material' | 'info' | 'plc' | 'recipe' | 'monitor'>('route')
+const activeTab = ref<'route' | 'api' | 'log' | 'material' | 'info' | 'plc' | 'recipe' | 'monitor' | 'finalCheck'>('route')
 const barcodeValidationResults = reactive<Record<string, { single: string, duplicate: string }>>({})
 const cellDetails = ref<Record<string, any>>({}) // 新增：存储电芯详细数据
 const cellDataLoading = ref(false)
@@ -337,6 +337,92 @@ function addLog(level: any, msg: string) {
   logs.value.unshift({ time: new Date().toLocaleTimeString(), level, msg })
   if (logs.value.length > 50) logs.value.pop()
 }
+
+// ==================== 终校验逻辑 ====================
+const qualityCheckResults = computed(() => {
+  // 获取所有有效且已同步详情的条码
+  const barcodes = currentBarcodes.value.filter(c => c && !c.startsWith('999') && !c.startsWith('000') && cellDetails.value[c])
+  if (barcodes.length === 0 || !routeSteps.value || routeSteps.value.length === 0) return []
+
+  // 1. 提取工步中的所有质量参数模板
+  const paramTemplates: any[] = []
+  routeSteps.value.forEach((step: any) => {
+    if (Array.isArray(step.workSeqParamList)) paramTemplates.push(...step.workSeqParamList)
+    if (Array.isArray(step.workStepList)) {
+      step.workStepList.forEach((subStep: any) => {
+        if (Array.isArray(subStep.workStepParamList)) paramTemplates.push(...subStep.workStepParamList)
+      })
+    }
+  })
+
+  // 2. 准备模组全局数据
+  const actualMax = moduleMaxCapacitySum.value === '-' ? null : Number(moduleMaxCapacitySum.value)
+  const actualMin = moduleMinCapacitySum.value === '-' ? null : Number(moduleMinCapacitySum.value)
+  const actualDiff = moduleCapacityDiff.value === '-' ? null : Number(moduleCapacityDiff.value)
+
+  // 3. 为每个条码生成一组校验项
+  const results: any[] = []
+  
+  barcodes.forEach((barcode, bIdx) => {
+    const detail = cellDetails.value[barcode]
+    
+    paramTemplates.forEach((p, pIdx) => {
+      let actualValue: any = '-'
+      let result: 'PASS' | 'FAIL' | '-' = '-'
+      const name = p.paramName || ''
+      
+      // 根据参数名识别并填充实际值
+      if (name.includes('批次明细')) {
+        actualValue = detail.batch || '-'
+        if (p.maxQualityValue && actualValue !== '-') {
+          const allowed = p.maxQualityValue.toString().split(/[;；,，]/).map((v: string) => v.trim())
+          result = allowed.includes(actualValue) ? 'PASS' : 'FAIL'
+        }
+      } else if (name.includes('容量和最大值')) {
+        actualValue = actualMax ?? '-'
+        if (actualMax !== null) {
+          const minLimit = p.minQualityValue !== null && p.minQualityValue !== '' ? Number(p.minQualityValue) : -Infinity
+          const maxLimit = p.maxQualityValue !== null && p.maxQualityValue !== '' ? Number(p.maxQualityValue) : Infinity
+          result = (actualMax >= minLimit && actualMax <= maxLimit) ? 'PASS' : 'FAIL'
+        }
+      } else if (name.includes('容量和最小值')) {
+        actualValue = actualMin ?? '-'
+        if (actualMin !== null) {
+          const minLimit = p.minQualityValue !== null && p.minQualityValue !== '' ? Number(p.minQualityValue) : -Infinity
+          const maxLimit = p.maxQualityValue !== null && p.maxQualityValue !== '' ? Number(p.maxQualityValue) : Infinity
+          result = (actualMin >= minLimit && actualMin <= maxLimit) ? 'PASS' : 'FAIL'
+        }
+      } else if (name.includes('档位明细')) {
+        actualValue = detail.grade || '-'
+        if (p.maxQualityValue && actualValue !== '-') {
+          const allowed = p.maxQualityValue.toString().split(/[;；,，]/).map((v: string) => v.trim())
+          result = allowed.includes(actualValue) ? 'PASS' : 'FAIL'
+        }
+      } else if (name.includes('容量差')) {
+        actualValue = actualDiff ?? '-'
+        if (actualDiff !== null) {
+          const minLimit = p.minQualityValue !== null && p.minQualityValue !== '' ? Number(p.minQualityValue) : -Infinity
+          const maxLimit = p.maxQualityValue !== null && p.maxQualityValue !== '' ? Number(p.maxQualityValue) : Infinity
+          result = (actualDiff >= minLimit && actualDiff <= maxLimit) ? 'PASS' : 'FAIL'
+        }
+      }
+
+      results.push({
+        barcode,
+        barcodeIndex: bIdx + 1,
+        isFirstParam: pIdx === 0,
+        paramCount: paramTemplates.length,
+        paramName: name,
+        minQualityValue: p.minQualityValue,
+        maxQualityValue: p.maxQualityValue,
+        actualValue,
+        result
+      })
+    })
+  })
+
+  return results
+})
 
 function resetAll() {
   orderInfo.value = null; orderError.value = ''; routeSteps.value = [];
@@ -849,6 +935,9 @@ function resetResult() {
           <button class="tab-btn" :class="{ active: activeTab === 'info' }" @click="activeTab = 'info'">
             <span>ℹ️</span> 获取信息
           </button>
+          <button class="tab-btn" :class="{ active: activeTab === 'finalCheck' }" @click="activeTab = 'finalCheck'">
+            <span>⚖️</span> 终校验
+          </button>
           <button class="tab-btn" :class="{ active: activeTab === 'plc' }" @click="activeTab = 'plc'">
             <span>💻</span> PLC交互
           </button>
@@ -1026,6 +1115,63 @@ function resetResult() {
               </div>
             </div>
           </div>
+
+          <div v-show="activeTab === 'finalCheck'" class="tab-pane">
+            <div class="card" style="margin: 12px; flex: 1; display: flex; flex-direction: column;">
+              <div class="card-title">
+                <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
+                  <span>⚖️</span> 终校验汇总对比 (依据工步质量标准)
+                </div>
+              </div>
+              <div class="matrix-table-container">
+                <table class="matrix-table check-table">
+                  <thead>
+                    <tr>
+                      <th width="80">条码号</th>
+                      <th width="240">参数名称 (paramName)</th>
+                      <th width="120">最小值 (min)</th>
+                      <th width="120">最大值 (max)</th>
+                      <th width="240">实际数据</th>
+                      <th width="100">对比结果</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(item, idx) in qualityCheckResults" :key="'qc-'+idx" :class="{ 'group-start': item.isFirstParam }">
+                      <td v-if="item.isFirstParam" :rowspan="item.paramCount" class="text-center font-bold" style="background: rgba(255,255,255,0.03); border-right: 1px solid rgba(255,255,255,0.1)">
+                        <div style="font-size: 14px; color: #90caf9;">{{ item.barcodeIndex }}</div>
+                        <div style="font-size: 10px; color: #546e7a; margin-top: 4px; word-break: break-all; padding: 0 4px;">{{ item.barcode }}</div>
+                      </td>
+                      <td style="padding-left: 12px;">{{ item.paramName }}</td>
+                      <td class="text-center">{{ item.minQualityValue ?? '-' }}</td>
+                      <td class="text-center">{{ item.maxQualityValue ?? '-' }}</td>
+                      <td class="text-center mono" :class="{ 'text-red': item.result === 'FAIL' }">{{ item.actualValue }}</td>
+                      <td class="text-center">
+                        <span v-if="item.result === 'PASS'" class="qc-pass">PASS</span>
+                        <span v-else-if="item.result === 'FAIL'" class="qc-fail">FAIL</span>
+                        <span v-else class="text-gray">-</span>
+                      </td>
+                    </tr>
+                    <tr v-if="qualityCheckResults.length === 0">
+                      <td colspan="6" class="empty-row">当前无已同步电芯详情或工步配置为空</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="check-bottom-actions" style="justify-content: space-between;">
+                <div class="qc-summary">
+                  结论：
+                  <span v-if="qualityCheckResults.every(r => r.result === 'PASS')" class="text-green font-bold">全部合格</span>
+                  <span v-else-if="qualityCheckResults.some(r => r.result === 'FAIL')" class="text-red font-bold">存在不合格项</span>
+                  <span v-else class="text-gray">待校验</span>
+                </div>
+                <div style="display: flex; gap: 12px;">
+                  <button class="btn-primary" @click="activeTab = 'info'">返回报表</button>
+                  <button class="btn-success" :disabled="testResult !== 'IDLE' || qualityCheckResults.length === 0" @click="setOK">确认并提交</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div v-show="activeTab === 'plc'" class="tab-pane">
             <PlcInteraction 
               :ip="config.plcIp || '192.168.0.1'"
@@ -1263,4 +1409,15 @@ kbd { background: rgba(100, 181, 246, 0.1); border: 1px solid rgba(100, 181, 246
 .info-table th { padding: 8px 4px; font-size: 11px; background: rgba(13, 71, 161, 0.6); color: #90caf9; text-align: center; }
 .info-table td { padding: 6px 8px; font-size: 11px; border-bottom: 1px solid rgba(255, 255, 255, 0.03); text-align: center; }
 .info-table th, .info-table td { white-space: nowrap; }
+.qc-pass { background: #1b5e20; color: #a5d6a7; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; }
+.qc-fail { background: #b71c1c; color: #ef9a9a; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; }
+.qc-summary { display: flex; align-items: center; gap: 8px; font-size: 14px; padding-left: 12px; }
+.check-table { border-collapse: separate; border-spacing: 0 1px; }
+.check-table tr { background: rgba(255,255,255,0.02); }
+.check-bottom-actions { padding: 16px; display: flex; justify-content: flex-end; gap: 12px; background: rgba(0,0,0,0.2); border-top: 1px solid rgba(255,255,255,0.05); }
+.btn-primary { background: #1565c0; color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer; font-weight: 600; }
+.btn-success { background: #2e7d32; color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer; font-weight: 600; }
+.btn-success:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.group-start td { border-top: 1px solid rgba(255,255,255,0.1); }
 </style>

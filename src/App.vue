@@ -97,7 +97,11 @@ async function initSignalR() {
         currentBarcodes.value = result.barcodes
         addLog('success', '✅ 采集矩阵已更新，共读取 ' + result.barcodes.length + ' 个条码');
 
-        // 2. 移除自动代替人工扫码逻辑，保持手动输入产品码
+        // 2. 自动触发业务流，但不再修改界面输入框 (保持手动扫描框干净)
+        if (result.barcodes.length > 0) {
+          addLog('info', `[自动触发] 正在使用采集码 [${result.barcodes[0].slice(-8)}] 拉取任务...`)
+          handleScan(result.barcodes[0])
+        }
       }
     } catch (err) {
       addLog('error', '❌ 自动采集条码或触发业务流失败');
@@ -197,8 +201,8 @@ function resetAll() {
   apiRecords.value = [];
 }
 
-async function handleScan() {
-  const code = productCode.value.trim()
+async function handleScan(overrideCode?: string) {
+  const code = (overrideCode ?? productCode.value).trim()
   if (!config.value.technicsProcessCode) {
     addLog('error', '未设置工艺路线编号');
     return

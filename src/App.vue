@@ -97,12 +97,7 @@ async function initSignalR() {
         currentBarcodes.value = result.barcodes
         addLog('success', '✅ 采集矩阵已更新，共读取 ' + result.barcodes.length + ' 个条码');
 
-        // 2. 自动代替人工扫码：使用第一个条码作为产品 SN 触发业务流
-        if (result.barcodes.length > 0) {
-          productCode.value = result.barcodes[0]
-          addLog('info', `[自动触发] 正在使用首个条码 [${productCode.value}] 拉取工单...`)
-          handleScan()
-        }
+        // 2. 移除自动代替人工扫码逻辑，保持手动输入产品码
       }
     } catch (err) {
       addLog('error', '❌ 自动采集条码或触发业务流失败');

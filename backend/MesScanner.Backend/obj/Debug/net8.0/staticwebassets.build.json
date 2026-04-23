@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Hash": "oXLqvGQH/Zel8yrLsKQ2rH/fyDueGY/GztIjg3vHrBI=",
+  "Source": "MesScanner.Backend",
+  "BasePath": "_content/MesScanner.Backend",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": []
+}

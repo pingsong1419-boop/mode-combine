@@ -1,0 +1,64 @@
+{
+    "code": 200,
+    "msg": "success",
+    "data": {
+        "workSeqList": [
+            {
+                "workseqNo": "10",
+                "workseqName": "物料校验工序",
+                "workStepList": [
+                    {
+                        "workstepNo": "10-1",
+                        "workstepName": "扫描底板条码",
+                        "workstepType": 0,
+                        "workStepMaterialList": [
+                            {
+                                "material_No": "MAT-BASE-001",
+                                "material_Name": "底板",
+                                "material_number": 1,
+                                "noLength": 12,
+                                "retrospect_Type": "0",
+                                "isCheckLength": "1",
+                                "material_id": "M001"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "workseqNo": "20",
+                "workseqName": "定扭拧紧工序",
+                "workStepList": [
+                    {
+                        "workstepNo": "20-1",
+                        "workstepName": "M6螺丝拧紧",
+                        "workstepType": 1,
+                        "torqueSettingCount": 4,
+                        "workStepParamList": [
+                            {
+                                "paramName": "扭矩",
+                                "minQualityValue": 1.0,
+                                "maxQualityValue": 2.0,
+                                "standardValue": 1.5,
+                                "paramUnit": "Nm"
+                            },
+                            {
+                                "paramName": "角度",
+                                "minQualityValue": 30,
+                                "maxQualityValue": 60,
+                                "standardValue": 45,
+                                "paramUnit": "Deg"
+                            }
+                        ],
+                        "workStepLineList": [
+                            {
+                                "pSetNo": "01",
+                                "torqueSettingCount": 4
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    }
+}

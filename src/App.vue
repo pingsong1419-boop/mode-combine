@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, nextTick, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick, onUnmounted, watch } from 'vue'
 import { HubConnectionBuilder, LogLevel, type HubConnection } from '@microsoft/signalr'
 import type { AppConfig, OrderInfo, RouteStep, TestResult, WorkStep } from './types/mes'
-import { getOrderByProcess, getRouteList, checkSingleMaterial, checkDuplicateBarcode } from './services/mesApi'
+import { getOrderByProcess, getRouteList, checkSingleMaterial, checkDuplicateBarcode, getCellData } from './services/mesApi'
 import ConfigModal from './components/ConfigModal.vue'
 import RouteTable from './components/RouteTable.vue'
 import ApiDetail from './components/ApiDetail.vue'
@@ -189,6 +189,149 @@ const apiRecords = ref<ApiRecord[]>([])
 const currentBarcodes = ref<string[]>([]) // 新增：存储读取到的电芯条码
 const activeTab = ref<'route' | 'api' | 'log' | 'material' | 'info' | 'plc' | 'recipe' | 'monitor'>('route')
 const barcodeValidationResults = reactive<Record<string, { single: string, duplicate: string }>>({})
+const cellDetails = ref<Record<string, any>>({}) // 新增：存储电芯详细数据
+const cellDataLoading = ref(false)
+const moduleMaxCapacitySum = ref<number | string>('-')
+const moduleMinCapacitySum = ref<number | string>('-')
+const moduleCapacityDiff = ref<number | string>('-')
+
+async function fetchCellDetails() {
+  if (!config.value.cellDataApiUrl || currentBarcodes.value.length === 0) {
+    addLog('warn', '未配置电芯数据接口或当前无采集条码');
+    return
+  }
+  
+  // 获取矩阵中所有经过清洗规则处理后的最终条码
+  const allFinalBarcodes: string[] = []
+  const layers = matrixLayers.value
+  for (let col = 0; col < 3; col++) {
+    for (let row = 0; row < layers; row++) {
+      allFinalBarcodes.push(getFinalBarcode(row, col))
+    }
+  }
+  
+  // 提取有效条码（非全0或全9）进行同步
+  const validBarcodes = allFinalBarcodes.filter(c => c && !c.startsWith('999') && !c.startsWith('000'))
+  
+  if (validBarcodes.length === 0) {
+    addLog('warn', '当前采集矩阵中没有待查询的有效条码');
+    return;
+  }
+
+  cellDataLoading.value = true
+  activeTab.value = 'api' // 切换到接口交互标签页
+  
+  // 重置模组统计数据
+  moduleMaxCapacitySum.value = '-'
+  moduleMinCapacitySum.value = '-'
+  moduleCapacityDiff.value = '-'
+  const t0 = Date.now()
+  addLog('info', `正在为 ${validBarcodes.length} 个条码同步 MES 电芯详细数据...`)
+
+  // 准备接口交互记录 (以第一个条码作为代表展示报文格式)
+  const firstBarcode = validBarcodes[0]
+  const orderCode = (orderInfo.value?.orderCode || orderInfo.value?.code || localStorage.getItem('last_order_code') || '').toString()
+  const representativeReqBody = {
+    orderCode: orderCode,
+    processCode: config.value.technicsProcessCode,
+    cellCode: firstBarcode
+  }
+
+  const rec = reactive<ApiRecord>({ 
+    title: `获取电芯数据交互 [${validBarcodes.length}条]`, 
+    url: config.value.cellDataApiUrl!, 
+    status: 'pending', 
+    time: new Date().toLocaleTimeString(), 
+    reqBody: representativeReqBody
+  })
+  apiRecords.value.unshift(rec)
+  
+  try {
+    const { getCellData } = await import('./services/mesApi')
+    
+    // 按用户要求的格式：并发请求所有条码的数据
+    const requests = validBarcodes.map(async (barcode) => {
+      const reqBody = {
+        orderCode: orderCode,
+        processCode: config.value.technicsProcessCode,
+        cellCode: barcode
+      }
+      
+      try {
+        const res = await getCellData(config.value.cellDataApiUrl!, reqBody)
+        
+        // 如果是代表条码，更新 API 详情状态
+        if (barcode === firstBarcode) {
+          rec.status = 'success'
+          rec.resBody = res
+          rec.duration = Date.now() - t0
+        }
+        
+        // 映射返回的数据到详情字典
+        const item = res.data || res.datas?.[0] || res
+        if (item) {
+          cellDetails.value[barcode] = {
+            batchDetail: item.cell_MatchName,
+            gradeDetail: item.cell_MatchName,
+            kValue: item.cell_KeyValue,
+            thickness: item.average_thickness,
+            ocv4: item.cell_Voltage,
+            capacity: item.cell_Capacity,
+            ocr4: item.cell_ACR,
+            grade: item.cell_MatchName,
+            t4Time: item.param_Data1,
+            batch: item.cell_PC,
+            weight: item.cell_Weight,
+            dcir: item.cell_DCR,
+            // 补充表格中需要的其他字段
+            capacityMax: item.capacity_max,
+            capacityMin: item.capacity_min,
+            capacityDiff: item.capacity_diff
+          }
+        }
+      } catch (e: any) {
+        console.error(`Fetch failed for ${barcode}:`, e)
+        if (barcode === firstBarcode) {
+          rec.status = 'error'
+          rec.resBody = { error: e.message }
+        }
+      }
+    })
+
+    await Promise.all(requests)
+    
+    // ==================== 模组容量统计计算 ====================
+    const fCount1 = Number(orderInfo.value?.formulaCount1 || 1)
+    // 提取所有成功获取到的电芯容量
+    const capacities = Object.values(cellDetails.value)
+      .map(d => Number(d.capacity))
+      .filter(c => !isNaN(c))
+    
+    if (capacities.length > 0) {
+      // 计算每个电芯的“容量和” (cell_Capacity * formulaCount1)
+      const capacitySums = capacities.map(c => c * fCount1)
+      const maxVal = Math.max(...capacitySums)
+      const minVal = Math.min(...capacitySums)
+      
+      moduleMaxCapacitySum.value = maxVal.toFixed(2)
+      moduleMinCapacitySum.value = minVal.toFixed(2)
+      moduleCapacityDiff.value = (maxVal - minVal).toFixed(2)
+      
+      addLog('info', `[模组计算] 容量和已更新: MAX=${moduleMaxCapacitySum.value}, MIN=${moduleMinCapacitySum.value}, DIFF=${moduleCapacityDiff.value}`)
+    }
+    
+    const duration = Date.now() - t0
+    addLog('success', `同步完成，成功更新 ${Object.keys(cellDetails.value).length} 条详细属性 (耗时: ${duration}ms)`)
+    // 同步完成后切回获取信息页查看结果
+    activeTab.value = 'info'
+  } catch (err: any) {
+    addLog('error', `批量同步失败: ${err.message}`)
+    rec.status = 'error'
+    rec.resBody = { error: err.message }
+  } finally {
+    cellDataLoading.value = false
+  }
+}
 
 function addLog(level: any, msg: string) {
   logs.value.unshift({ time: new Date().toLocaleTimeString(), level, msg })
@@ -500,6 +643,18 @@ const isMatrixFullyValidated = computed(() => {
   return true
 })
 
+// 自动触发逻辑：当矩阵校验完全完成后，自动同步数据
+watch(isMatrixFullyValidated, (newVal) => {
+  if (newVal === true) {
+    addLog('success', '✅ 矩阵全量校验完成，正在自动同步电芯详细数据...')
+    activeTab.value = 'info' // 先跳转到详细采集报表
+    // 延迟一小段时间触发同步，确保 UI 已更新
+    setTimeout(() => {
+      fetchCellDetails()
+    }, 800)
+  }
+})
+
 async function fetchRouteList(routeCode: string, targetTab = 'material') {
   routeLoading.value = true
   const t0 = Date.now()
@@ -797,11 +952,77 @@ function resetResult() {
             </div>
           </div>
           <div v-show="activeTab === 'info'" class="tab-pane">
-            <div class="card" style="margin: 20px; border-style: dashed;">
-              <div class="card-title">ℹ️ 采集信息详情</div>
-              <div class="empty-hint" style="padding: 40px;">
-                正在开发中... <br/>
-                此区域将用于展示更详细的工序采集数据。
+            <div class="card" style="margin: 12px; flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+              <div class="card-title">
+                <div style="flex: 1; display: flex; align-items: center; gap: 8px;">
+                  <span>📋</span> 详细采集报表 (XLS 格式)
+                  <span class="tab-count" v-if="currentBarcodes.length">{{ currentBarcodes.length }}</span>
+                </div>
+                <button class="scan-btn" :disabled="cellDataLoading || !currentBarcodes.length" @click="fetchCellDetails">
+                  {{ cellDataLoading ? '正在同步...' : '📡 同步电芯详细数据' }}
+                </button>
+              </div>
+              
+              <div class="matrix-table-container info-matrix-container">
+                <table class="matrix-table info-table">
+                  <thead>
+                    <tr>
+                      <th width="80">位置序号</th>
+                      <th width="180">电芯码</th>
+                      <th width="150">模组模块内电芯批次明细</th>
+                      <th width="150">模组模块内电芯档位明细</th>
+                      <th width="150">模组模块容量和最大值</th>
+                      <th width="120">模组模块容量差</th>
+                      <th width="80">k值</th>
+                      <th width="80">电芯厚度</th>
+                      <th width="120">电芯电压OCV4</th>
+                      <th width="100">电芯容量</th>
+                      <th width="120">电芯内阻OCR4</th>
+                      <th width="100">电芯档位</th>
+                      <th width="150">OCV4时间T4</th>
+                      <th width="120">电芯批次</th>
+                      <th width="100">电芯重量</th>
+                      <th width="80">DCIR</th>
+                      <th width="150">模组模块容量和最小值</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template v-for="cIdx in [0, 1, 2]" :key="`xls-col-${cIdx}`">
+                      <tr v-for="rIdx in Array.from({length: matrixLayers}, (_, i) => i)" :key="`xls-cell-${cIdx}-${rIdx}`">
+                        <td class="text-center font-bold" style="background: rgba(255,255,255,0.02)">
+                          {{ cIdx + 1 }}.{{ rIdx + 1 }}
+                        </td>
+                        <td>
+                          <div class="cell-content">
+                            <span class="barcode-text" style="max-width: 160px;">{{ getFinalBarcode(rIdx, cIdx) }}</span>
+                          </div>
+                        </td>
+                        <!-- 动态显示同步后的数据 -->
+                        <td class="text-center">{{ cellDetails[getMatrixBarcode(rIdx, cIdx)]?.batchDetail || '-' }}</td>
+                        <td class="text-center">{{ cellDetails[getMatrixBarcode(rIdx, cIdx)]?.gradeDetail || '-' }}</td>
+                        <td class="text-center">{{ moduleMaxCapacitySum }}</td>
+                        <td class="text-center">{{ moduleCapacityDiff }}</td>
+                        <td class="text-center">{{ cellDetails[getMatrixBarcode(rIdx, cIdx)]?.kValue || '-' }}</td>
+                        <td class="text-center">{{ cellDetails[getMatrixBarcode(rIdx, cIdx)]?.thickness || '-' }}</td>
+                        <td class="text-center">{{ cellDetails[getMatrixBarcode(rIdx, cIdx)]?.ocv4 || '-' }}</td>
+                        <td class="text-center">{{ cellDetails[getMatrixBarcode(rIdx, cIdx)]?.capacity || '-' }}</td>
+                        <td class="text-center">{{ cellDetails[getMatrixBarcode(rIdx, cIdx)]?.ocr4 || '-' }}</td>
+                        <td class="text-center">{{ cellDetails[getMatrixBarcode(rIdx, cIdx)]?.grade || '-' }}</td>
+                        <td class="text-center">{{ cellDetails[getMatrixBarcode(rIdx, cIdx)]?.t4Time || '-' }}</td>
+                        <td class="text-center">{{ cellDetails[getMatrixBarcode(rIdx, cIdx)]?.batch || '-' }}</td>
+                        <td class="text-center">{{ cellDetails[getMatrixBarcode(rIdx, cIdx)]?.weight || '-' }}</td>
+                        <td class="text-center">{{ cellDetails[getMatrixBarcode(rIdx, cIdx)]?.dcir || '-' }}</td>
+                        <td class="text-center">{{ moduleMinCapacitySum }}</td>
+                      </tr>
+                    </template>
+                    <tr v-if="matrixLayers === 0">
+                      <td colspan="17" class="empty-row">暂无详细采集数据 (等待 PLC 触发)</td>
+                    </tr>
+                    <tr v-else-if="Object.keys(cellDetails).length === 0">
+                      <td colspan="17" class="empty-row">数据未同步，请点击上方按钮获取 MES 电芯详情</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -1037,4 +1258,9 @@ kbd { background: rgba(100, 181, 246, 0.1); border: 1px solid rgba(100, 181, 246
 .final-code-item { font-family: 'Consolas', monospace; font-size: 10px; color: #64b5f6; padding: 2px 4px; border-radius: 2px; }
 .final-code-item.replaced-zero { color: #ff5252; background: rgba(255, 82, 82, 0.1); font-weight: bold; }
 .final-code-item.replaced-nine { color: #bdbdbd; background: rgba(255, 255, 255, 0.05); }
+.info-matrix-container { overflow-x: auto !important; max-width: 100%; display: block; border: 1px solid rgba(144, 202, 249, 0.1); border-radius: 4px; }
+.info-table { min-width: 1800px; table-layout: auto !important; width: 100%; }
+.info-table th { padding: 8px 4px; font-size: 11px; background: rgba(13, 71, 161, 0.6); color: #90caf9; text-align: center; }
+.info-table td { padding: 6px 8px; font-size: 11px; border-bottom: 1px solid rgba(255, 255, 255, 0.03); text-align: center; }
+.info-table th, .info-table td { white-space: nowrap; }
 </style>

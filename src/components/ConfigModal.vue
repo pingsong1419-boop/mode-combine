@@ -80,6 +80,10 @@ function handleCancel() {
                 <label>重码校验 API</label>
                 <input v-model="form.duplicateCheckApiUrl" type="text" class="input-field" />
               </div>
+              <div class="field-group">
+                <label>获取电芯数据 API</label>
+                <input v-model="form.cellDataApiUrl" type="text" class="input-field" />
+              </div>
             </div>
           </div>
 

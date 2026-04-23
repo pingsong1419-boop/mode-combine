@@ -88,3 +88,11 @@ export async function checkSingleMaterial(apiUrl: string, body: object): Promise
 export async function checkDuplicateBarcode(apiUrl: string, body: object): Promise<any> {
   return postRequest<any>(apiUrl, body)
 }
+/**
+ * 步骤五：获取电芯详细数据 (NJ专用)
+ * @param apiUrl 接口地址
+ * @param body 请求体
+ */
+export async function getCellData(apiUrl: string, body: object): Promise<any> {
+  return postRequest<any>(apiUrl, body)
+}

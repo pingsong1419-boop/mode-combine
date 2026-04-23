@@ -14,6 +14,8 @@ export const DEFAULT_APP_CONFIG = {
   fullMaterialApiUrl: '',
   codeCreateApiUrl: '',
   mesPushApiUrl: '',
+  duplicateCheckApiUrl: '',
+  cellDataApiUrl: '',
   scannerIp: '',
   scannerPort: 0,
   barcodeMatchRegex: '',

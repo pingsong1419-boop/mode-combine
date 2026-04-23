@@ -16,6 +16,8 @@ export interface AppConfig {
   mesPushApiUrl?: string
   /** 重码校验API */
   duplicateCheckApiUrl?: string
+  /** 获取电芯数据API */
+  cellDataApiUrl?: string
   
   /** 扫码枪 IP */
   scannerIp?: string

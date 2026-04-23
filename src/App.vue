@@ -450,6 +450,34 @@ function isLayerDuplicateValid(layerIdx: number): string {
   return hasLoading ? 'loading' : 'success'
 }
 
+/** 获取处理后的最终条码 (根据清洗规则) */
+function getFinalBarcode(layerIdx: number, colIdx: number): string {
+  const originalCode = getMatrixBarcode(layerIdx, colIdx)
+  
+  // 规则 2: 若该位置不存在电芯码，补充为 24 位 9
+  if (!originalCode) {
+    return '999999999999999999999999'
+  }
+
+  // 获取三项校验状态
+  const ruleValid = isBarcodeValid(originalCode)
+  const singleStatus = barcodeValidationResults[originalCode]?.single
+  const duplicateStatus = barcodeValidationResults[originalCode]?.duplicate
+
+  // 规则 1: 若任意一项校验失败，替换为 24 位 0
+  if (ruleValid === false || singleStatus === 'error' || duplicateStatus === 'error') {
+    return '000000000000000000000000'
+  }
+
+  // 规则 3: 全部通过则保留原码
+  if (ruleValid === true && singleStatus === 'success' && duplicateStatus === 'success') {
+    return originalCode
+  }
+
+  // 校验中状态暂回显原码
+  return originalCode
+}
+
 async function fetchRouteList(routeCode: string) {
   routeLoading.value = true
   const t0 = Date.now()
@@ -693,6 +721,7 @@ function resetResult() {
                       <th>物料编号&长度校验</th>
                       <th>重码校验</th>
                       <th>单物料校验</th>
+                      <th>处理后结果 (24位)</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -729,9 +758,19 @@ function resetResult() {
                         </template>
                         <span v-else>-</span>
                       </td>
+                      <!-- 处理后结果 (垂直显示 3 列的结果) -->
+                      <td class="text-center p-0">
+                        <div class="final-codes-column">
+                          <div v-for="col in [0, 1, 2]" :key="col" class="final-code-item" 
+                               :class="{ 'replaced-zero': getFinalBarcode(i-1, col).startsWith('000'), 
+                                         'replaced-nine': getFinalBarcode(i-1, col).startsWith('999') }">
+                            {{ getFinalBarcode(i-1, col) }}
+                          </div>
+                        </div>
+                      </td>
                     </tr>
                     <tr v-if="matrixLayers === 0">
-                      <td colspan="7" class="empty-row">等待 PLC 信号触发采集...</td>
+                      <td colspan="8" class="empty-row">等待 PLC 信号触发采集...</td>
                     </tr>
                   </tbody>
                 </table>
@@ -964,4 +1003,10 @@ kbd { background: rgba(100, 181, 246, 0.1); border: 1px solid rgba(100, 181, 246
 .badge.info { background: rgba(33, 150, 243, 0.15); color: #2196f3; border: 1px solid rgba(33, 150, 243, 0.3); }
 .empty-row { text-align: center; padding: 60px !important; color: #546e7a; font-style: italic; }
 @keyframes fadeIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
+.final-barcode { font-family: 'Consolas', monospace; font-size: 10px; color: #64b5f6; }
+.final-barcode.replaced { color: #ffab40; font-weight: bold; }
+.final-codes-column { display: flex; flex-direction: column; gap: 2px; padding: 4px; background: rgba(0,0,0,0.2); }
+.final-code-item { font-family: 'Consolas', monospace; font-size: 10px; color: #64b5f6; padding: 2px 4px; border-radius: 2px; }
+.final-code-item.replaced-zero { color: #ff5252; background: rgba(255, 82, 82, 0.1); font-weight: bold; }
+.final-code-item.replaced-nine { color: #bdbdbd; background: rgba(255, 255, 255, 0.05); }
 </style>

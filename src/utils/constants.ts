@@ -37,6 +37,7 @@ export const DEFAULT_APP_CONFIG = {
   col1StartAddr: 'DB1.DBB10',
   col2StartAddr: 'DB1.DBB11',
   col3StartAddr: 'DB1.DBB12',
+  plcModuleCodeWriteAddress: 'DB1.DBB100',
   cellBarcodeLength: 24,
   adminUsername: 'admin',
   adminPassword: '123'

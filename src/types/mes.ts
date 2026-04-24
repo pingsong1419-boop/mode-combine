@@ -53,6 +53,8 @@ export interface AppConfig {
   plcCellLayerAddress?: string
   /** 堆叠模组序号点位 (BYTE/WORD) */
   plcModuleSnAddress?: string
+  /** 模组码写入起始地址 (STRING) */
+  plcModuleCodeWriteAddress?: string
   /** 每层电芯个数 (整型) */
   cellsPerLayer?: number
   

@@ -167,6 +167,10 @@ function handleCancel() {
                 <input v-model="form.plcModuleSnAddress" type="text" class="input-field" placeholder="例如: DB1.DBB2" />
               </div>
               <div class="field-group">
+                <label>模组码写入起始地址 (STRING)</label>
+                <input v-model="form.plcModuleCodeWriteAddress" type="text" class="input-field" placeholder="例如: DB1.DBB100" />
+              </div>
+              <div class="field-group">
                 <label>每层电芯个数</label>
                 <input v-model.number="form.cellsPerLayer" type="number" class="input-field" placeholder="输入整数" />
               </div>

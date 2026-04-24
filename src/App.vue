@@ -160,7 +160,8 @@ async function onConfigSaved(newConfig: AppConfig) {
         col2StartAddr: newConfig.col2StartAddr,
         col3StartAddr: newConfig.col3StartAddr,
         aStackDbNum: newConfig.plcAStackDbNum,
-        bStackDbNum: newConfig.plcBStackDbNum
+        bStackDbNum: newConfig.plcBStackDbNum,
+        moduleCodeWriteAddr: newConfig.plcModuleCodeWriteAddress
       })
     })
 

@@ -25,6 +25,11 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+Console.WriteLine("==================================================");
+Console.WriteLine("🚀 MES PLC Backend 正在启动...");
+Console.WriteLine($"启动时间: {DateTime.Now}");
+Console.WriteLine("==================================================");
+
 app.UseCors("AllowAll");
 
 app.MapHub<TorqueHub>("/torqueHub");
@@ -35,6 +40,15 @@ app.MapGet("/", () => "MES PLC Backend is Running");
 
 // --- PLC Commands ---
 app.MapPost("/api/plc/config", (PlcRequest req, PlcService service) => {
+    Console.WriteLine("--------------------------------------------------");
+    Console.WriteLine($"[API] 收到 PLC 配置更新请求:");
+    Console.WriteLine($"      IP: {req.Ip}");
+    Console.WriteLine($"      A面触发地址: {req.AStackAddr}");
+    Console.WriteLine($"      B面触发地址: {req.BStackAddr}");
+    Console.WriteLine($"      模组序号地址: {req.ModuleSnAddr}"); // 关键检查项
+    Console.WriteLine($"      电芯层数地址: {req.CellLayerAddr}");
+    Console.WriteLine("--------------------------------------------------");
+
     service.SetConnection(req.Ip, req.CpuType, req.Rack, req.Slot, req.HeartbeatAddress, 
         req.AStackAddr, req.BStackAddr, req.CellLayerAddr, req.ModuleSnAddr,
         req.Col1StartAddr, req.Col2StartAddr, req.Col3StartAddr,

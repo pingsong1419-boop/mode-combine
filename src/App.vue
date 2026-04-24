@@ -40,8 +40,8 @@ async function fetchConfig() {
   }
 }
 
-const currentModuleSn = ref(0)
-const currentLayers = ref(0)
+const currentModuleSn = ref<number | null>(null)
+const currentLayers = ref<number | null>(null)
 
 async function initSignalR() {
   hubConnection = new HubConnectionBuilder()
@@ -531,10 +531,8 @@ async function handleScan(overrideCode?: string) {
     // 步骤 2 & 3：初步筛选状态为 2 且类型为 0/1 的所有工单
     const allOrders = res.datas || []
     const validOrders = allOrders.filter(o => {
-      const statusOk = String(o.order_Status) === '2'
-      const type = o.order_Type ?? o.orderType
-      const typeOk = type === 0 || type === 1 || type === '0' || type === '1'
-      return statusOk && typeOk
+      // 恢复：仅根据状态筛选（下发状态），不再限制关联工单匹配
+      return String(o.order_Status) === '2'
     })
     
     // 步骤 5：再次触发与匹配验证
@@ -550,7 +548,15 @@ async function handleScan(overrideCode?: string) {
       // 验证通过：找到相同 code 且 order_Status 为 2
       if (match && String(match.order_Status) === '2') {
         orderInfo.value = match
-        addLog('success', `[二次复核] SN [${targetSN}] 状态确认正常，自动继续`)
+        
+        // 二次刷新缓存逻辑：自动匹配成功后，保留关联工单一致的任务，同时也保留该工单本身
+        const selectedCode = match.code || match.orderCode
+        pendingOrders.value = allOrders.filter(o => 
+          String(o.order_Status) === '2' && 
+          (o.union_Code === selectedCode || (o.code || o.orderCode) === selectedCode)
+        )
+        
+        addLog('success', `[自动匹配] SN [${targetSN}] 状态确认正常，列表已更新`)
         // 智能跳转：如果已完成则去 info，否则去 material
         const targetTab = testResult.value === 'OK' ? 'info' : 'material'
         await fetchRouteList(match.route_No, targetTab)
@@ -583,6 +589,16 @@ async function handleScan(overrideCode?: string) {
 async function onOrderSelected(order: OrderInfo) {
   showOrderSelect.value = false
   orderInfo.value = order
+  
+  // 核心逻辑：弹窗选择完成后，二次刷新缓存列表
+  const selectedCode = order.code || order.orderCode
+  // 保留：1.关联工单一致的任务 2.该工单本身
+  pendingOrders.value = pendingOrders.value.filter(o => 
+    o.union_Code === selectedCode || 
+    (o.code || o.orderCode) === selectedCode
+  )
+  
+  addLog('info', `已根据选择的工单 [${selectedCode}] 刷新缓存列表`)
   addLog('success', `已选择工单号: ${order.orderCode}`)
   await fetchRouteList(order.route_No)
 }
@@ -886,6 +902,8 @@ async function handleFinalConfirm() {
       productCode: productCode.value,
       orderCode: orderInfo.value?.orderCode,
       recipeName: activeRecipeName.value,
+      moduleSn: currentModuleSn.value, // 新增：模组序号
+      layers: currentLayers.value,      // 新增：电芯层数
       timestamp: new Date().toISOString(),
       result: 'OK',
       barcodes: currentBarcodes.value,
@@ -939,18 +957,12 @@ async function handleFinalConfirm() {
             <span class="stat-value">{{ config.technicsProcessCode || '未设置' }}</span>
           </div>
           <div class="stat-item">
-            <span class="stat-label">PLC 状态:</span>
-            <span class="stat-value" :class="plcOnline ? 'c-green' : 'c-red'">
-              {{ plcOnline ? '● 在线' : '○ 离线' }}
-            </span>
-          </div>
-          <div class="stat-item">
             <span class="stat-label">模块序号:</span>
-            <span class="stat-value highlight-blue">{{ currentModuleSn || '-' }}</span>
+            <span class="stat-value highlight-blue">{{ currentModuleSn !== null && currentModuleSn !== undefined ? currentModuleSn : '-' }}</span>
           </div>
           <div class="stat-item">
-            <span class="stat-label">堆叠层数:</span>
-            <span class="stat-value highlight-orange">{{ currentLayers || '-' }}</span>
+            <span class="stat-label">模块规格:</span>
+            <span class="stat-value highlight-orange">{{ (currentLayers !== null && currentLayers !== undefined && config.cellsPerLayer) ? (currentLayers * config.cellsPerLayer) : '-' }}</span>
           </div>
         </div>
       </div>

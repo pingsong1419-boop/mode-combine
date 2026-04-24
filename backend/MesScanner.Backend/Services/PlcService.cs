@@ -44,6 +44,7 @@ public class PlcService : BackgroundService
         int aDb = 1590, int bDb = 1591)
     {
         _ip = ip;
+        _cpu = cpuType == "S71500" ? CpuType.S71500 : (cpuType == "S71200" ? CpuType.S71200 : CpuType.S7300);
         _rack = rack;
         _slot = slot;
         _heartbeatAddress = heartbeatAddress;
@@ -56,7 +57,7 @@ public class PlcService : BackgroundService
         _col3StartAddr = col3;
         _aStackDbNum = aDb;
         _bStackDbNum = bDb;
-        Console.WriteLine($"[PLC Config] A={_aStackFinishAddress}, B={_bStackFinishAddress}, ADB={_aStackDbNum}, BDB={_bStackDbNum}");
+        Console.WriteLine($"[PLC Config] A={_aStackFinishAddress}, B={_bStackFinishAddress}, SN_ADDR={_moduleSnAddress}, ADB={_aStackDbNum}, BDB={_bStackDbNum}");
         
         if (Enum.TryParse<CpuType>(cpuType, true, out var cpu))
         {
@@ -339,7 +340,7 @@ public class PlcService : BackgroundService
                 time = DateTime.Now.ToString("HH:mm:ss.fff"),
                 action = action, 
                 address = address, 
-                value = value,
+                result = value, // 这里改回 result，匹配 UI 表格字段
                 status = status
             });
         }
@@ -364,15 +365,20 @@ public class PlcService : BackgroundService
                             int layers = 0;
                             int moduleSn = 0;
                             int dbNum = _aStackDbNum;
+                            
+                            _logger.LogInformation("[DEBUG] A面触发! 内部地址状态: 层数={L}, 序号={S}, DB={DB}", _cellLayerAddress, _moduleSnAddress, dbNum);
+
                             if (!string.IsNullOrEmpty(_cellLayerAddress)) {
                                 var layerAddrA = GetSideAgnosticAddress(_cellLayerAddress, dbNum);
                                 var layerVal = await ReadValueAsync(layerAddrA);
-                                layers = Convert.ToInt32(layerVal);
+                                layers = SafeConvertToInt(layerVal);
+                                _logger.LogInformation("[PLC] A面层数原始值: {Raw}, 转换后: {Val}, 地址: {Addr}", layerVal, layers, layerAddrA);
                             }
                             if (!string.IsNullOrEmpty(_moduleSnAddress)) {
                                 var snAddrA = GetSideAgnosticAddress(_moduleSnAddress, dbNum);
                                 var snVal = await ReadValueAsync(snAddrA);
-                                moduleSn = Convert.ToInt32(snVal);
+                                moduleSn = SafeConvertToInt(snVal);
+                                _logger.LogInformation("[PLC] A面模组序号原始值: {Raw}, 转换后: {Val}, 地址: {Addr}", snVal, moduleSn, snAddrA);
                             }
                             Console.WriteLine($"[Trigger] A面触发, DB: {dbNum}, 层数: {layers}, 模组序号: {moduleSn}");
                             await HandlePlcTrigger("A面", layers, moduleSn, dbNum);
@@ -389,15 +395,23 @@ public class PlcService : BackgroundService
                             int layers = 0;
                             int moduleSn = 0;
                             int dbNum = _bStackDbNum;
+
+                            _logger.LogInformation("[DEBUG] B面触发! 内部地址状态: 层数={L}, 序号={S}, DB={DB}", _cellLayerAddress, _moduleSnAddress, dbNum);
+
                             if (!string.IsNullOrEmpty(_cellLayerAddress)) {
                                 var layerAddrB = GetSideAgnosticAddress(_cellLayerAddress, dbNum);
                                 var layerVal = await ReadValueAsync(layerAddrB);
-                                layers = Convert.ToInt32(layerVal);
+                                layers = SafeConvertToInt(layerVal);
+                                _logger.LogInformation("[PLC] B面层数原始值: {Raw}, 转换后: {Val}, 地址: {Addr}", layerVal, layers, layerAddrB);
                             }
                             if (!string.IsNullOrEmpty(_moduleSnAddress)) {
                                 var snAddrB = GetSideAgnosticAddress(_moduleSnAddress, dbNum);
                                 var snVal = await ReadValueAsync(snAddrB);
-                                moduleSn = Convert.ToInt32(snVal);
+                                moduleSn = SafeConvertToInt(snVal);
+                                _logger.LogInformation("[PLC] B面模组序号原始值: {Raw}, 转换后: {Val}, 地址: {Addr}", snVal, moduleSn, snAddrB);
+                            }
+                            else {
+                                _logger.LogWarning("[PLC] ⚠ B面触发成功，但 _moduleSnAddress 为空");
                             }
                             Console.WriteLine($"[Trigger] B面触发, DB: {dbNum}, 层数: {layers}, 模组序号: {moduleSn}");
                             await HandlePlcTrigger("B面", layers, moduleSn, dbNum);
@@ -412,6 +426,17 @@ public class PlcService : BackgroundService
             }
 
             await Task.Delay(200, token); // 触发信号监控改为 200ms 一次，与日志描述一致
+        }
+    }
+
+    private int SafeConvertToInt(object? val)
+    {
+        if (val == null) return 0;
+        try {
+            if (val is bool b) return b ? 1 : 0;
+            return Convert.ToInt32(val);
+        } catch {
+            return 0;
         }
     }
 

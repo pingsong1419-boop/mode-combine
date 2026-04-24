@@ -233,6 +233,20 @@ async function loadActiveRecipe() {
   }
 }
 
+/** 模组物料全量验证判定 */
+const isMatrixQualified = computed(() => {
+  const layers = matrixLayers.value
+  if (layers === 0) return false
+  for (let r = 0; r < layers; r++) {
+    for (let c = 0; c < 3; c++) {
+      const b = getFinalBarcode(r, c)
+      // 如果包含全0(失败)或全9(未采集)，则判定为 NG
+      if (b.startsWith('000') || b.startsWith('999')) return false
+    }
+  }
+  return true
+})
+
 // 核心匹配逻辑：寻找当前高亮的工单编码
 const highlightedOrderCode = computed(() => {
   if (!activeRecipeId.value || currentModuleSn.value === null || currentLayers.value === null) return null
@@ -498,17 +512,17 @@ const qualityCheckResults = computed(() => {
         barcodeIndex: bIdx + 1,
         isFirstParam: pIdx === 0,
         paramCount: paramTemplates.length,
-        paramName: name,
-        minQualityValue: p.minQualityValue,
-        maxQualityValue: p.maxQualityValue,
+        ...p,
         actualValue,
         result
       })
     })
   })
-
+  
   return results
 })
+
+
 
 function resetAll() {
   orderInfo.value = null; orderError.value = ''; routeSteps.value = [];
@@ -1068,7 +1082,7 @@ async function handleFinalConfirm() {
           </div>
           <div class="stat-item">
             <span class="stat-label">当前工序：</span>
-            <span class="stat-value">{{ config.technicsProcessCode || '未设置' }}</span>
+            <span class="stat-value">{{ config.technicsProcessName || '未命名' }} ({{ config.technicsProcessCode }})</span>
           </div>
           <div class="stat-item">
             <span class="stat-label">模块序号:</span>
@@ -1092,12 +1106,12 @@ async function handleFinalConfirm() {
       <section class="left-panel">
         <div class="card scan-card">
           <div class="card-title"><span class="step-badge">1</span> 生成模块码</div>
-          <div class="product-sn-display" :class="{ 'active': productCode || generatedModuleCode, 'is-generated': !!generatedModuleCode, 'loading': orderLoading }">
+          <div class="product-sn-display" :class="{ 'active': productCode || generatedModuleCode, 'loading': orderLoading }">
             <span class="sn-icon">{{ generatedModuleCode ? '📦' : '🆔' }}</span>
             <div class="sn-content">
               <template v-if="generatedModuleCode">
-                <span class="sn-label" style="color: #fbc02d;">已生成模块码：</span>
-                <span class="sn-value" style="color: #fbc02d; font-size: 16px;">{{ generatedModuleCode }}</span>
+                <span class="sn-label" style="color: #00e676;">已生成模块码：</span>
+                <span class="sn-value" style="color: #00e676; font-size: 16px;">{{ generatedModuleCode }}</span>
               </template>
               <template v-else-if="productCode">
                 <span class="sn-label">当前处理 SN：</span>
@@ -1205,15 +1219,20 @@ async function handleFinalConfirm() {
             <MaterialScanner 
               :steps="routeSteps" 
               :auto-barcodes="currentBarcodes"
-              :force-complete="isMatrixFullyValidated"
               @log="addLog" 
               @complete="setOK" 
             />
             
             <!-- 底部条码矩阵显示 (仅在物料验证页显示) -->
             <div class="barcode-display-card flex-grow">
-              <div class="card-title">
-                电芯采集矩阵
+              <div class="card-title" style="display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span>🔋</span> 电芯采集矩阵
+                </div>
+                <div v-if="currentBarcodes.length > 0" class="verification-result-box" :class="isMatrixQualified ? 'is-ok' : 'is-ng'">
+                  <span class="res-label">物料验证结果:</span>
+                  <span class="res-value">{{ isMatrixQualified ? 'OK' : 'NG' }}</span>
+                </div>
               </div>
               <div class="matrix-table-container">
                 <table class="matrix-table">
@@ -1397,11 +1416,11 @@ async function handleFinalConfirm() {
                 </table>
               </div>
               <div class="check-bottom-actions" style="justify-content: space-between;">
-                <div class="qc-summary">
+                <div v-if="qualityCheckResults.length > 0" class="qc-summary">
                   结论：
-                  <span v-if="qualityCheckResults.every(r => r.result === 'PASS')" class="text-green font-bold">全部合格</span>
-                  <span v-else-if="qualityCheckResults.some(r => r.result === 'FAIL')" class="text-red font-bold">存在不合格项</span>
-                  <span v-else class="text-gray">待校验</span>
+                  <span v-if="qualityCheckResults.every(r => r.result === 'PASS')" class="text-green font-bold">OK</span>
+                  <span v-else-if="qualityCheckResults.some(r => r.result === 'FAIL')" class="text-red font-bold">NG</span>
+                  <span v-else class="text-gray">WAIT</span>
                 </div>
               </div>
             </div>
@@ -1562,7 +1581,6 @@ async function handleFinalConfirm() {
   min-height: 52px;
 }
 .product-sn-display.active { border-color: rgba(66, 165, 245, 0.4); background: rgba(21, 101, 192, 0.05); box-shadow: inset 0 0 12px rgba(66, 165, 245, 0.05); }
-.product-sn-display.is-generated { border-color: rgba(251, 192, 45, 0.4); background: rgba(251, 192, 45, 0.05); box-shadow: inset 0 0 12px rgba(251, 192, 45, 0.05); }
 .product-sn-display.loading { border-color: #42a5f5; }
 .sn-icon { font-size: 18px; opacity: 0.8; }
 .sn-content { flex: 1; display: flex; flex-direction: column; gap: 2px; }
@@ -1679,4 +1697,27 @@ kbd { background: rgba(100, 181, 246, 0.1); border: 1px solid rgba(100, 181, 246
 .btn-success:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .group-start td { border-top: 1px solid rgba(255,255,255,0.1); }
+
+/* 物料验证结果显示框 */
+.verification-result-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.verification-result-box.is-ok {
+  border-color: rgba(0, 230, 118, 0.5);
+  box-shadow: 0 0 10px rgba(0, 230, 118, 0.1);
+}
+.verification-result-box.is-ng {
+  border-color: rgba(255, 82, 82, 0.5);
+  box-shadow: 0 0 10px rgba(255, 82, 82, 0.1);
+}
+.res-label { font-size: 12px; color: rgba(255, 255, 255, 0.7); }
+.res-value { font-size: 16px; font-weight: 800; letter-spacing: 1px; }
+.is-ok .res-value { color: #00e676; }
+.is-ng .res-value { color: #ff5252; }
 </style>

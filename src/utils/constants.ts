@@ -20,6 +20,7 @@ export const DEFAULT_APP_CONFIG = {
   scannerPort: 0,
   barcodeMatchRegex: '',
   technicsProcessCode: 'CTP_M1130',
+  technicsProcessName: '堆叠站',
   produce_Type: '2',
   tenantID: 'FD',
   plcIp: '192.168.2.1',

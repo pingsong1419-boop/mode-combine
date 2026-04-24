@@ -96,6 +96,10 @@ function handleCancel() {
                 <input v-model="form.technicsProcessCode" type="text" class="input-field" />
               </div>
               <div class="field-group">
+                <label>工序名称</label>
+                <input v-model="form.technicsProcessName" type="text" class="input-field" />
+              </div>
+              <div class="field-group">
                 <label>条码匹配正则</label>
                 <input v-model="form.barcodeMatchRegex" type="text" class="input-field" />
               </div>

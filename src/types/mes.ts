@@ -28,6 +28,8 @@ export interface AppConfig {
   
   /** 工序代码 */
   technicsProcessCode: string
+  /** 工序名称 */
+  technicsProcessName?: string
   /** 生产类型 */
   produce_Type?: string
   /** 租户 ID */

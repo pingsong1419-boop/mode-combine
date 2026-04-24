@@ -959,51 +959,36 @@ async function fetchRouteList(routeCode: string, targetTab = 'material') {
 
 
 async function handleFinalConfirm() {
+  // 1. 初始校验
+  const isMaterialOk = isMatrixQualified.value
+  const isFinalCheckOk = qualityCheckResults.value.length > 0 && qualityCheckResults.value.every(r => r.result === 'PASS')
+  const finalStatus = (isMaterialOk && isFinalCheckOk) ? 'OK' : 'NG'
+  const finalMsg = (isMaterialOk && isFinalCheckOk) 
+    ? '测试综合判定通过' 
+    : `综合判定不合格: ${!isMaterialOk ? '[物料采集未达标] ' : ''}${!isFinalCheckOk ? '[质量检测不合格]' : ''}`
+
   if (!config.value.mesPushApiUrl) {
     addLog('error', '未配置 MES 推送地址，无法上传')
-    testResult.value = 'OK'
-    resultMessage.value = '测试综合判定通过'
+    testResult.value = finalStatus
+    resultMessage.value = finalMsg
     return
   }
 
   isPushing.value = true
-  addLog('info', '正在推送生产数据至 MES...')
+  addLog('info', '启动生产数据处理流程...')
   
   try {
-    const payload = {
-      productCode: productCode.value,
-      orderCode: orderInfo.value?.orderCode,
-      recipeName: activeRecipeName.value,
-      moduleSn: currentModuleSn.value, // 新增：模组序号
-      layers: currentLayers.value,      // 新增：电芯层数
-      timestamp: new Date().toISOString(),
-      result: 'OK',
-      barcodes: currentBarcodes.value,
-      checkResults: qualityCheckResults.value,
-      // 聚合电芯详情
-      cellDetails: Object.keys(cellDetails.value).map(sn => ({
-        sn,
-        ...cellDetails.value[sn]
-      }))
-    }
-
-    const res = await pushToMes(config.value.mesPushApiUrl, payload)
-    addLog('success', '数据已成功推送到 MES 系统')
+    // ================ 第一步：生成模块码 ================
+    let finalModuleCode = generatedModuleCode.value || ""
     
-    testResult.value = 'OK'
-    resultMessage.value = '测试综合判定通过'
-    
-    // ================ 新增逻辑：生成模块码 ================
     if (config.value.codeCreateApiUrl) {
-      activeTab.value = 'api' // 自动跳转到接口交互
+      activeTab.value = 'api'
       addLog('info', '正在请求生成模块码...')
       
-      // 提取模块规格后缀：CODERULE 参数应与界面显示的“模块规格”一致
       const physicalSpecsValue = (currentLayers.value !== null && currentLayers.value !== undefined && config.value.cellsPerLayer)
         ? (currentLayers.value * config.value.cellsPerLayer)
         : null
       
-      // 优先使用计算出的物理规格，若无则回退到工单 specsCode 提取数字
       let suffix = ''
       if (physicalSpecsValue !== null) {
         suffix = String(physicalSpecsValue)
@@ -1013,11 +998,7 @@ async function handleFinalConfirm() {
         suffix = match ? match[0] : specs
       }
       
-      const codePayload = {
-        "CODERULE": `${suffix}s`,
-        "PHYSICSLEVEL": "0"
-      }
-      
+      const codePayload = { "CODERULE": `${suffix}s`, "PHYSICSLEVEL": "0" }
       const t0_gen = Date.now()
       const recGen = reactive<ApiRecord>({ 
         title: '生成模块码', 
@@ -1033,25 +1014,108 @@ async function handleFinalConfirm() {
         recGen.status = 'success'
         recGen.resBody = createRes
         recGen.duration = Date.now() - t0_gen
-        
-        // 提取生成的模块码：从响应报文的 message 字段获取
         const gCode = createRes.message || createRes.data || (typeof createRes === 'string' ? createRes : '')
         if (gCode) {
           generatedModuleCode.value = gCode
+          finalModuleCode = gCode
           addLog('success', `模块码生成成功: ${gCode}`)
         }
       } catch (genErr: any) {
         recGen.status = 'error'
         recGen.resBody = { error: genErr.message }
-        addLog('error', `模块码生成失败: ${genErr.message}`)
+        addLog('error', `生成码失败，将尝试使用现有码或空码上报: ${genErr.message}`)
       }
     }
-    // ====================================================
+
+    // ================ 第二步：构建报文 (使用 finalModuleCode) ================
+    const produceInEntityList: any[] = []
+    const cellParamEntityList: any[] = []
+    
+    for (let c = 0; c < 3; c++) {
+      for (let r = 0; r < matrixLayers.value; r++) {
+        const barcode = getFinalBarcode(r, c)
+        const pos = `${c + 1}.${r + 1}`
+        const detail = cellDetails.value[barcode] || {}
+
+        produceInEntityList.push({ productCode: barcode, productCount: 1 })
+        cellParamEntityList.push({
+          productCode: barcode,
+          cellInfoList: [
+            { technicsParamName: "电芯位置", technicsParamCode: "DXPZ0001", technicsParamValue: pos, technicsParamQuality: "1" },
+            { technicsParamName: "k值", technicsParamCode: "DXPZ0006", technicsParamValue: String(detail.kValue || "-"), technicsParamQuality: detail.kValue ? "1" : "0" },
+            { technicsParamName: "电芯厚度", technicsParamCode: "DXPZ0007", technicsParamValue: String(detail.thickness || "-"), technicsParamQuality: detail.thickness ? "1" : "0" },
+            { technicsParamName: "电芯电压OCV4", technicsParamCode: "DXPZ0008", technicsParamValue: String(detail.ocv4 || "-"), technicsParamQuality: detail.ocv4 ? "1" : "0" },
+            { technicsParamName: "电芯容量", technicsParamCode: "DXPZ0009", technicsParamValue: String(detail.capacity || "-"), technicsParamQuality: detail.capacity ? "1" : "0" },
+            { technicsParamName: "电芯内阻OCR4", technicsParamCode: "DXPZ0010", technicsParamValue: String(detail.ocr4 || "-"), technicsParamQuality: detail.ocr4 ? "1" : "0" },
+            { technicsParamName: "电芯档位", technicsParamCode: "DXPZ0011", technicsParamValue: String(detail.grade || "-"), technicsParamQuality: detail.grade ? "1" : "0" },
+            { technicsParamName: "OCV4时间T4", technicsParamCode: "DXPZ0012", technicsParamValue: String(detail.t4Time || "-"), technicsParamQuality: detail.t4Time ? "1" : "0" },
+            { technicsParamName: "电芯批次", technicsParamCode: "DXPZ0013", technicsParamValue: String(detail.batch || "-"), technicsParamQuality: detail.batch ? "1" : "0" },
+            { technicsParamName: "电芯重量", technicsParamCode: "DXPZ0014", technicsParamValue: String(detail.weight || "-"), technicsParamQuality: detail.weight ? "1" : "0" },
+            { technicsParamName: "DCIR", technicsParamCode: "DXPZ0015", technicsParamValue: String(detail.dcir || "-"), technicsParamQuality: detail.dcir ? "1" : "0" }
+          ]
+        })
+      }
+    }
+
+    const cellDetailsList = Object.values(cellDetails.value)
+    const allBatches = Array.from(new Set(cellDetailsList.map(d => d.batch).filter(Boolean))).join(';')
+    const allGrades = Array.from(new Set(cellDetailsList.map(d => d.grade).filter(Boolean))).join(';')
+
+    const produceParamEntityList = [
+      { productCode: finalModuleCode, technicsParamName: "模组模块内电芯批次明细", technicsParamCode: "DXPZ0002", technicsParamValue: allBatches || "-", technicsParamQuality: allBatches ? "1" : "0" },
+      { productCode: finalModuleCode, technicsParamName: "模组模块内电芯档位明细", technicsParamCode: "DXPZ0003", technicsParamValue: allGrades || "-", technicsParamQuality: allGrades ? "1" : "0" },
+      { productCode: finalModuleCode, technicsParamName: "模组模块容量和最大值", technicsParamCode: "DXPZ0004", technicsParamValue: String(moduleMaxCapacitySum.value), technicsParamQuality: "1" },
+      { productCode: finalModuleCode, technicsParamName: "模组模块容量和最小值", technicsParamCode: "DXPZ0016", technicsParamValue: String(moduleMinCapacitySum.value), technicsParamQuality: "1" },
+      { productCode: finalModuleCode, technicsParamName: "模组模块容量差", technicsParamCode: "DXPZ0005", technicsParamValue: String(moduleCapacityDiff.value), technicsParamQuality: isFinalCheckOk ? "1" : "0" }
+    ]
+
+    const payload = {
+      produceOrderCode: orderInfo.value?.orderCode || orderInfo.value?.code,
+      routeNo: orderInfo.value?.routeCode || activeRecipeName.value,
+      technicsProcessCode: config.value.technicsProcessCode,
+      technicsProcessName: config.value.technicsProcessName,
+      productCode: finalModuleCode,
+      productCount: 1,
+      productQuality: finalStatus === 'OK' ? 1 : 0,
+      produceDate: new Date().toISOString().split('T')[0],
+      startTime: new Date(Date.now() - 3600000).toLocaleString(), 
+      endTime: new Date().toLocaleString(),
+      userName: "admin",
+      userAccount: "admin",
+      deviceCode: config.value.deviceCode || "mes_station_01",
+      deviceName: config.value.deviceName || "模拟堆叠站",
+      remarks: finalMsg,
+      produceInEntityList,
+      produceParamEntityList,
+      cellParamEntityList,
+      ngEntityList: [],
+      otherParamEntityList: []
+    }
+
+    // ================ 第三步：推送上报 ================
+    const t0 = Date.now()
+    const rec = reactive<ApiRecord>({ 
+      title: '生产结果上报', 
+      url: config.value.mesPushApiUrl!, 
+      status: 'pending', 
+      time: new Date().toLocaleTimeString(), 
+      reqBody: payload 
+    })
+    apiRecords.value.unshift(rec)
+
+    const res = await pushToMes(config.value.mesPushApiUrl!, payload)
+    rec.status = 'success'
+    rec.resBody = res
+    rec.duration = Date.now() - t0
+    addLog('success', '生产数据上报成功')
+    
+    testResult.value = finalStatus
+    resultMessage.value = finalMsg
+
   } catch (err: any) {
-    addLog('error', `数据推送失败: ${err.message}`)
-    // 自动降级处理：推送失败也视为完成并继续下一步
-    testResult.value = 'OK'
-    resultMessage.value = '测试综合判定通过 (推送异常已忽略)'
+    addLog('error', `操作失败: ${err.message}`)
+    testResult.value = finalStatus
+    resultMessage.value = `${finalMsg} (异常: ${err.message})`
   } finally {
     isPushing.value = false
   }

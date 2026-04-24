@@ -1,0 +1,579 @@
+[
+  {
+    "produceOrderCode": "P0J7202604220001_DJ2530",
+    "routeNo": "DJ2530_0J7_V1.0 test",
+    "technicsProcessCode": "CTP_M1130",
+    "technicsProcessName": "电芯配组",
+    "technicsStepCode": "",
+    "technicsStepName": "",
+    "productCode": "03HKB30S2026004240000039",
+    "productCount": 1,
+    "productQuality": 0,
+    "produceDate": "2026-04-24",
+    "startTime": "2026-04-24 22:04:10",
+    "endTime": "2026-04-24 22:05:05",
+    "userName": "admin",
+    "userAccount": "admin",
+    "deviceCode": "mes_station_01",
+    "deviceName": "模拟堆叠站",
+    "remarks": "Full 30-Cell Matrix Upload with 100% Parameter Coverage",
+    "produceInEntityList": [
+      { "productCode": "03HCB01F0000ADFA80001770", "productCount": 1 },
+      { "productCode": "999999999999999999999999", "productCount": 1 },
+      { "productCode": "999999999999999999999999", "productCount": 1 },
+      { "productCode": "999999999999999999999999", "productCount": 1 },
+      { "productCode": "999999999999999999999999", "productCount": 1 },
+      { "productCode": "999999999999999999999999", "productCount": 1 },
+      { "productCode": "999999999999999999999999", "productCount": 1 },
+      { "productCode": "999999999999999999999999", "productCount": 1 },
+      { "productCode": "999999999999999999999999", "productCount": 1 },
+      { "productCode": "999999999999999999999999", "productCount": 1 },
+      { "productCode": "03HCB01F0000ADFA80001770", "productCount": 1 },
+      { "productCode": "999999999999999999999999", "productCount": 1 },
+      { "productCode": "999999999999999999999999", "productCount": 1 },
+      { "productCode": "999999999999999999999999", "productCount": 1 },
+      { "productCode": "999999999999999999999999", "productCount": 1 },
+      { "productCode": "999999999999999999999999", "productCount": 1 },
+      { "productCode": "999999999999999999999999", "productCount": 1 },
+      { "productCode": "999999999999999999999999", "productCount": 1 },
+      { "productCode": "999999999999999999999999", "productCount": 1 },
+      { "productCode": "999999999999999999999999", "productCount": 1 },
+      { "productCode": "999999999999999999999999", "productCount": 1 },
+      { "productCode": "999999999999999999999999", "productCount": 1 },
+      { "productCode": "999999999999999999999999", "productCount": 1 },
+      { "productCode": "999999999999999999999999", "productCount": 1 },
+      { "productCode": "999999999999999999999999", "productCount": 1 },
+      { "productCode": "999999999999999999999999", "productCount": 1 },
+      { "productCode": "999999999999999999999999", "productCount": 1 },
+      { "productCode": "999999999999999999999999", "productCount": 1 },
+      { "productCode": "999999999999999999999999", "productCount": 1 },
+      { "productCode": "999999999999999999999999", "productCount": 1 }
+    ],
+    "produceParamEntityList": [
+      {
+        "productCode": "03HKB30S2026004240000039",
+        "technicsParamName": "模组模块内电芯批次明细",
+        "technicsParamCode": "DXPZ0002",
+        "technicsParamValue": "FA80",
+        "desc": "",
+        "technicsParamQuality": "0"
+      },
+      {
+        "productCode": "03HKB30S2026004240000039",
+        "technicsParamName": "模组模块内电芯档位明细",
+        "technicsParamCode": "DXPZ0003",
+        "technicsParamValue": "-",
+        "desc": "",
+        "technicsParamQuality": "0"
+      },
+      {
+        "productCode": "03HKB30S2026004240000039",
+        "technicsParamName": "模组模块容量和最大值",
+        "technicsParamCode": "DXPZ0004",
+        "technicsParamValue": "109618.5",
+        "desc": "",
+        "technicsParamQuality": "1"
+      },
+      {
+        "productCode": "03HKB30S2026004240000039",
+        "technicsParamName": "模组模块容量和最小值",
+        "technicsParamCode": "DXPZ0016",
+        "technicsParamValue": "109618.5",
+        "desc": "",
+        "technicsParamQuality": "1"
+      },
+      {
+        "productCode": "03HKB30S2026004240000039",
+        "technicsParamName": "模组模块容量差",
+        "technicsParamCode": "DXPZ0005",
+        "technicsParamValue": "0",
+        "desc": "",
+        "technicsParamQuality": "1"
+      }
+    ],
+    "ngEntityList": [],
+    "cellParamEntityList": [
+      {
+        "productCode": "03HCB01F0000ADFA80001770",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "1.1", "desc": "", "technicsParamQuality": "1" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "0.45", "desc": "", "technicsParamQuality": "1" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "5.62", "desc": "", "technicsParamQuality": "1" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "3250.123", "desc": "", "technicsParamQuality": "1" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "109618.5", "desc": "", "technicsParamQuality": "1" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "0.15", "desc": "", "technicsParamQuality": "1" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "A", "desc": "", "technicsParamQuality": "1" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "2026-04-24 10:00:00", "desc": "", "technicsParamQuality": "1" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "FA80", "desc": "", "technicsParamQuality": "1" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "1890.5", "desc": "", "technicsParamQuality": "1" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "2.4", "desc": "", "technicsParamQuality": "1" }
+        ]
+      },
+      {
+        "productCode": "999999999999999999999999",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "1.2", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" }
+        ]
+      },
+      {
+        "productCode": "999999999999999999999999",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "1.3", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" }
+        ]
+      },
+      {
+        "productCode": "999999999999999999999999",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "1.4", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" }
+        ]
+      },
+      {
+        "productCode": "999999999999999999999999",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "1.5", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" }
+        ]
+      },
+      {
+        "productCode": "999999999999999999999999",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "1.6", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" }
+        ]
+      },
+      {
+        "productCode": "999999999999999999999999",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "1.7", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" }
+        ]
+      },
+      {
+        "productCode": "999999999999999999999999",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "1.8", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" }
+        ]
+      },
+      {
+        "productCode": "999999999999999999999999",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "1.9", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" }
+        ]
+      },
+      {
+        "productCode": "999999999999999999999999",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "1.10", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" }
+        ]
+      },
+      {
+        "productCode": "03HCB01F0000ADFA80001770",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "2.1", "desc": "", "technicsParamQuality": "1" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "0.45", "desc": "", "technicsParamQuality": "1" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "5.62", "desc": "", "technicsParamQuality": "1" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "3250.123", "desc": "", "technicsParamQuality": "1" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "109618.5", "desc": "", "technicsParamQuality": "1" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "0.15", "desc": "", "technicsParamQuality": "1" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "A", "desc": "", "technicsParamQuality": "1" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "2026-04-24 10:00:00", "desc": "", "technicsParamQuality": "1" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "FA80", "desc": "", "technicsParamQuality": "1" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "1890.5", "desc": "", "technicsParamQuality": "1" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "2.4", "desc": "", "technicsParamQuality": "1" }
+        ]
+      },
+      {
+        "productCode": "999999999999999999999999",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "2.2", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" }
+        ]
+      },
+      {
+        "productCode": "999999999999999999999999",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "2.3", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" }
+        ]
+      },
+      {
+        "productCode": "999999999999999999999999",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "2.4", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" }
+        ]
+      },
+      {
+        "productCode": "999999999999999999999999",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "2.5", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" }
+        ]
+      },
+      {
+        "productCode": "999999999999999999999999",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "2.6", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" }
+        ]
+      },
+      {
+        "productCode": "999999999999999999999999",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "2.7", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" }
+        ]
+      },
+      {
+        "productCode": "999999999999999999999999",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "2.8", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" }
+        ]
+      },
+      {
+        "productCode": "999999999999999999999999",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "2.9", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" }
+        ]
+      },
+      {
+        "productCode": "999999999999999999999999",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "2.10", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" }
+        ]
+      },
+      {
+        "productCode": "999999999999999999999999",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "3.1", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" }
+        ]
+      },
+      {
+        "productCode": "999999999999999999999999",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "3.2", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" }
+        ]
+      },
+      {
+        "productCode": "999999999999999999999999",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "3.3", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" }
+        ]
+      },
+      {
+        "productCode": "999999999999999999999999",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "3.4", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" }
+        ]
+      },
+      {
+        "productCode": "999999999999999999999999",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "3.5", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" }
+        ]
+      },
+      {
+        "productCode": "999999999999999999999999",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "3.6", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" }
+        ]
+      },
+      {
+        "productCode": "999999999999999999999999",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "3.7", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" }
+        ]
+      },
+      {
+        "productCode": "999999999999999999999999",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "3.8", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" }
+        ]
+      },
+      {
+        "productCode": "999999999999999999999999",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "3.9", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" }
+        ]
+      },
+      {
+        "productCode": "999999999999999999999999",
+        "cellInfoList": [
+          { "technicsParamName": "电芯位置", "technicsParamCode": "DXPZ0001", "technicsParamValue": "3.10", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "k值", "technicsParamCode": "DXPZ0006", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯厚度", "technicsParamCode": "DXPZ0007", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯电压OCV4", "technicsParamCode": "DXPZ0008", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯容量", "technicsParamCode": "DXPZ0009", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯内阻OCR4", "technicsParamCode": "DXPZ0010", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯档位", "technicsParamCode": "DXPZ0011", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "OCV4时间T4", "technicsParamCode": "DXPZ0012", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯批次", "technicsParamCode": "DXPZ0013", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "电芯重量", "technicsParamCode": "DXPZ0014", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" },
+          { "technicsParamName": "DCIR", "technicsParamCode": "DXPZ0015", "technicsParamValue": "-", "desc": "", "technicsParamQuality": "0" }
+        ]
+      }
+    ],
+    "otherParamEntityList": []
+  }
+]

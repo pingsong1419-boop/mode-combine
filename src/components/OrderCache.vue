@@ -3,7 +3,8 @@ import { defineProps, defineEmits } from 'vue'
 import type { OrderInfo } from '../types/mes'
 
 const props = defineProps<{
-  orders: OrderInfo[]
+  orders: OrderInfo[],
+  highlightedCode?: string | null
 }>()
 
 const emit = defineEmits(['select'])
@@ -34,11 +35,18 @@ function selectOrder(order: OrderInfo) {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="order in orders" :key="order.code || order.orderCode">
+          <tr 
+            v-for="order in orders" 
+            :key="order.code || order.orderCode"
+            :class="{ 'is-highlighted': highlightedCode === (order.code || order.orderCode) }"
+          >
             <td class="highlight">{{ order.code || order.orderCode }}</td>
             <td class="highlight-alt">{{ order.union_Code || '-' }}</td>
             <td class="mono">{{ order.route_No }}</td>
-            <td class="module-type">{{ (order.formulaCount1 || '') + (order.formulaSpecs1 || '') + (order.formulaCount2 || '') + (order.formulaSpecs2 || '') || '-' }}</td>
+            <td class="module-type">
+              {{ (order.formulaCount1 || '') + (order.formulaSpecs1 || '') + (order.formulaCount2 || '') + (order.formulaSpecs2 || '') || '-' }}
+              <span v-if="highlightedCode === (order.code || order.orderCode)" class="match-badge">🎯 配方锁定</span>
+            </td>
             <td>
               <span class="status-tag" :class="'status-' + order.order_Status">
                 {{ 

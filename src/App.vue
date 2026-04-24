@@ -214,6 +214,8 @@ const cellDetails = ref<Record<string, any>>({}) // 新增：存储电芯详细�
 const cellDataLoading = ref(false)
 const isPushing = ref(false)
 const activeRecipeName = ref('未选择')
+const activeRecipeId = ref<string | null>(null)
+const recipeDetails = ref<RecipeDetail[]>([])
 
 async function loadActiveRecipe() {
   try {
@@ -222,11 +224,38 @@ async function loadActiveRecipe() {
       const data = await res.json()
       const active = (data.masters || []).find((m: any) => m.isActive)
       activeRecipeName.value = active ? active.productName : '未选择'
+      activeRecipeId.value = active ? active.id : null
+      recipeDetails.value = data.details || []
     }
   } catch (err) {
     console.error('加载活动配方失败:', err)
   }
 }
+
+// 核心匹配逻辑：寻找当前高亮的工单编码
+const highlightedOrderCode = computed(() => {
+  if (!activeRecipeId.value || currentModuleSn.value === null || currentLayers.value === null) return null
+  
+  const specs = currentLayers.value * (config.value.cellsPerLayer || 0)
+  
+  // 1. 在配方明细中匹配 (序号 + 规格)
+  const matchedDetail = recipeDetails.value.find(d => 
+    d.masterId === activeRecipeId.value && 
+    Number(d.blockIndex) === currentModuleSn.value && 
+    Number(d.blockSpec) === specs
+  )
+  
+  if (!matchedDetail) return null
+  
+  // 2. 拿着配方里的 moduleType 去工单缓存里找
+  const targetType = matchedDetail.moduleType
+  const matchedOrder = pendingOrders.value.find(o => {
+    const orderTypeStr = (o.formulaCount1 || '') + (o.formulaSpecs1 || '') + (o.formulaCount2 || '') + (o.formulaSpecs2 || '')
+    return orderTypeStr === targetType
+  })
+  
+  return matchedOrder ? (matchedOrder.code || matchedOrder.orderCode) : null
+})
 
 watch(activeTab, (newTab, oldTab) => {
   if (oldTab === 'recipe' && newTab !== 'recipe') {
@@ -560,6 +589,13 @@ async function handleScan(overrideCode?: string) {
         // 智能跳转：如果已完成则去 info，否则去 material
         const targetTab = testResult.value === 'OK' ? 'info' : 'material'
         await fetchRouteList(match.route_No, targetTab)
+        
+        // 自动触发：进入物料验证后自动读取条码
+        if (targetTab === 'material') {
+          setTimeout(() => {
+            simulateBarcodeRead()
+          }, 500)
+        }
         return
       }
       
@@ -599,8 +635,36 @@ async function onOrderSelected(order: OrderInfo) {
   )
   
   addLog('info', `已根据选择的工单 [${selectedCode}] 刷新缓存列表`)
-  addLog('success', `已选择工单号: ${order.orderCode}`)
-  await fetchRouteList(order.route_No)
+  addLog('success', `已选择工单号: ${order.orderCode}，正在进入物料校验...`)
+  
+  // 1. 先切换到物料验证页签并加载工艺路线
+  await fetchRouteList(order.route_No, 'material')
+  
+  // 2. 联动逻辑：进入物料验证后，如果当前没有条码或需要重新采集，自动触发 PLC 条码读取
+  // 这样操作员只需要看结果，不需要手动点“读取条码”
+  setTimeout(() => {
+    simulateBarcodeRead() // 触发 PLC 扫描逻辑
+  }, 500)
+}
+
+/** 模拟/触发从 PLC 读取条码矩阵的逻辑 */
+async function simulateBarcodeRead() {
+  if (isPushing.value) return
+  addLog('info', '正在自动从 PLC 采集条码矩阵数据...')
+  
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/plc/read-barcodes`)
+    if (res.ok) {
+       const result = await res.json()
+       if (result.barcodes && result.barcodes.length > 0) {
+         currentBarcodes.value = result.barcodes
+         addLog('success', `成功读取 ${result.barcodes.length} 个条码，开始自动校验...`)
+         // 这里会自动触发 watch(isMatrixFullyValidated) 逻辑，校验完成后会自动跳到 info 界面
+       }
+    }
+  } catch (err) {
+    addLog('error', '自动采集 PLC 条码失败，请手动尝试')
+  }
 }
 
 function simulatePlcTrigger() {
@@ -783,22 +847,29 @@ function getFinalBarcode(layerIdx: number, colIdx: number): string {
 /** 判定整个矩阵是否已经完全采集并校验完成 */
 const isMatrixFullyValidated = computed(() => {
   if (matrixLayers.value === 0) return false
+  
+  let hasAnyBarcode = false
   for (let col = 0; col < 3; col++) {
     for (let row = 0; row < matrixLayers.value; row++) {
       const code = getMatrixBarcode(row, col)
-      if (!code) return false // 任何一个位置为空则未完成
       
+      // 核心修改：如果该位置没采到条码（未采集），直接跳过，不参与校验等待
+      if (!code) continue 
+      
+      hasAnyBarcode = true
       const res = barcodeValidationResults[code]
+      
       // 只有规则校验通过，且单物料和重码校验不是 loading 状态，才算该条码处理完成
       const ruleValid = isBarcodeValid(code)
-      if (!ruleValid) continue // 如果规则校验失败，该条码已处于确定状态（全0），继续检查下一个
+      if (!ruleValid) continue // 如果规则校验失败，已处于确定状态（全0），继续检查下一个
       
       if (!res || res.single === 'loading' || res.duplicate === 'loading') {
         return false
       }
     }
   }
-  return true
+  // 必须至少有一个条码，且所有条码都校验完成才跳转
+  return hasAnyBarcode
 })
 
 // 自动触发逻辑：当矩阵校验完全完成后，自动同步数据
@@ -1095,7 +1166,11 @@ async function handleFinalConfirm() {
             <RouteTable :steps="routeSteps" :loading="routeLoading" />
           </div>
           <div v-show="activeTab === 'orderCache'" class="tab-pane">
-            <OrderCache :orders="pendingOrders" @select="onOrderSelected" />
+            <OrderCache 
+              :orders="pendingOrders" 
+              :highlighted-code="highlightedOrderCode"
+              @select="onOrderSelected" 
+            />
           </div>
           <div v-show="activeTab === 'material'" class="tab-pane flex-column">
             <MaterialScanner 

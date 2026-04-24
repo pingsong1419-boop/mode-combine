@@ -10,9 +10,12 @@ public class PlcRequest
     public string AStackAddr { get; set; } = "";
     public string BStackAddr { get; set; } = "";
     public string CellLayerAddr { get; set; } = "";
+    public string ModuleSnAddr { get; set; } = "";
     public string Col1StartAddr { get; set; } = "";
     public string Col2StartAddr { get; set; } = "";
     public string Col3StartAddr { get; set; } = "";
+    public int AStackDbNum { get; set; } = 1590;
+    public int BStackDbNum { get; set; } = 1591;
 }
 
 public class PlcReadRequest

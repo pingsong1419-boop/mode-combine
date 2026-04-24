@@ -74,8 +74,8 @@ async function handleRead() {
       if (bytes.length > 0) {
         // 1. 十六进制空格分隔
         hexValue.value = bytes.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ')
-        // 2. 尝试转换为 ASCII 字符串
-        stringValue.value = bytes.map(b => b >= 32 && b <= 126 ? String.fromCharCode(b) : '.').join('')
+        // 2. 尝试转换为 ASCII 字符串 (跳过前 2 字节西门子 String 头部)
+        stringValue.value = bytes.slice(2).map(b => b >= 32 && b <= 126 ? String.fromCharCode(b) : '.').join('')
         readValue.value = hexValue.value // 默认显示十六进制
       } else {
         readValue.value = data.value

@@ -23,9 +23,12 @@ public class PlcService : BackgroundService
     private string _aStackFinishAddress = ""; // 新增：A面堆叠完成
     private string _bStackFinishAddress = ""; // 新增：B面堆叠完成
     private string _cellLayerAddress = "";    // 新增：电芯层数点位
+    private string _moduleSnAddress = "";     // 新增：堆叠模组序号点位
     private string _col1StartAddr = "";       // 新增：1列起始
     private string _col2StartAddr = "";       // 新增：2列起始
     private string _col3StartAddr = "";       // 新增：3列起始
+    private int _aStackDbNum = 1590;          // 新增：A面数据块编号
+    private int _bStackDbNum = 1591;          // 新增：B面数据块编号
 
     public PlcService(ILogger<PlcService> logger, IHubContext<TorqueHub> hubContext)
     {
@@ -36,8 +39,9 @@ public class PlcService : BackgroundService
     public bool IsConnected => _isConnected;
 
     public void SetConnection(string ip, string cpuType, short rack, short slot, string heartbeatAddress, 
-        string aStackAddr = "", string bStackAddr = "", string cellLayerAddr = "",
-        string col1 = "", string col2 = "", string col3 = "")
+        string aStackAddr = "", string bStackAddr = "", string cellLayerAddr = "", string moduleSnAddr = "",
+        string col1 = "", string col2 = "", string col3 = "",
+        int aDb = 1590, int bDb = 1591)
     {
         _ip = ip;
         _rack = rack;
@@ -46,10 +50,13 @@ public class PlcService : BackgroundService
         _aStackFinishAddress = aStackAddr;
         _bStackFinishAddress = bStackAddr;
         _cellLayerAddress = cellLayerAddr;
+        _moduleSnAddress = moduleSnAddr;
         _col1StartAddr = col1;
         _col2StartAddr = col2;
         _col3StartAddr = col3;
-        Console.WriteLine($"[PLC Config] A={_aStackFinishAddress}, B={_bStackFinishAddress}, Layers={_cellLayerAddress}, C1={_col1StartAddr}, C2={_col2StartAddr}, C3={_col3StartAddr}");
+        _aStackDbNum = aDb;
+        _bStackDbNum = bDb;
+        Console.WriteLine($"[PLC Config] A={_aStackFinishAddress}, B={_bStackFinishAddress}, ADB={_aStackDbNum}, BDB={_bStackDbNum}");
         
         if (Enum.TryParse<CpuType>(cpuType, true, out var cpu))
         {
@@ -147,6 +154,31 @@ public class PlcService : BackgroundService
         }
     }
 
+    private string GetSideAgnosticAddress(string address, int targetDbNum)
+    {
+        if (targetDbNum <= 0 || string.IsNullOrEmpty(address)) return address;
+
+        // 1. 如果包含点，如 "DB1.DBB1" 或 "DB1.DBX0.0"，替换第一段的 DB 号
+        if (address.Contains('.'))
+        {
+            var parts = address.Split('.');
+            if (parts[0].ToUpper().StartsWith("DB"))
+            {
+                // 重新拼接后面的所有部分，例如 DB1.DBX0.0 -> DB1590.DBX0.0
+                return $"DB{targetDbNum}.{string.Join(".", parts.Skip(1))}";
+            }
+            return address; // 非 DB 块地址 (如 M0.0) 不处理
+        }
+        
+        // 2. 如果不包含点且以 DB 开头，则认为是偏移量格式，如 "DBB1" -> "DB1590.DBB1"
+        if (address.ToUpper().StartsWith("DB"))
+        {
+            return $"DB{targetDbNum}.{address}";
+        }
+
+        return address;
+    }
+
     public async Task<object?> ReadValueAsync(string address, int count = 1)
     {
         Console.WriteLine($"[PlcService] Read: {address}, Count: {count}");
@@ -193,12 +225,17 @@ public class PlcService : BackgroundService
         }
     }
 
-    public async Task<List<string>> ReadCellBarcodesAsync(int layers, int barcodeLength, string col1Addr, string col2Addr, string col3Addr)
+    public async Task<List<string>> ReadCellBarcodesAsync(int layers, int barcodeLength, string col1Addr, string col2Addr, string col3Addr, int overrideDbNum = 0)
     {
         var allBarcodes = new List<string>();
         if (_plc == null || layers <= 0) return allBarcodes;
 
-        string[] startAddrs = { col1Addr, col2Addr, col3Addr };
+        // 如果指定了 DB 号，则强制替换
+        string c1 = GetSideAgnosticAddress(col1Addr, overrideDbNum);
+        string c2 = GetSideAgnosticAddress(col2Addr, overrideDbNum);
+        string c3 = GetSideAgnosticAddress(col3Addr, overrideDbNum);
+
+        string[] startAddrs = { c1, c2, c3 };
 
         try
         {
@@ -206,21 +243,24 @@ public class PlcService : BackgroundService
             {
                 if (string.IsNullOrEmpty(addr)) continue;
 
-                // 解析地址
+                // 解析地址，例如 DB1590.DBB228
                 var parts = addr.Split('.');
-                int dbNum = int.Parse(parts[0].Substring(2));
-                int start = int.Parse(parts[1].Substring(3));
+                int dbNum = int.Parse(parts[0].ToUpper().Replace("DB", "").Trim());
+                // 支持 DBB, DBW, DBD, DBX 等多种格式，统一切掉非数字前缀
+                string offsetStr = System.Text.RegularExpressions.Regex.Replace(parts[1], @"[^\d]", "");
+                int start = int.Parse(offsetStr);
                 int totalBytesToRead = layers * 40;
 
                 // 一次性读取该列所有层的原始数据
+                Console.WriteLine($"[Batch Read] DB: {dbNum}, Start: {start}, Bytes: {totalBytesToRead}, Addr: {addr}");
                 byte[] rawData = await Task.Run(() => _plc.ReadBytes(DataType.DataBlock, dbNum, start, totalBytesToRead));
 
                 if (rawData != null)
                 {
                     for (int i = 0; i < layers; i++)
                     {
-                        // 每 40 字节为一节
-                        byte[] cellBytes = rawData.Skip(i * 40).Take(barcodeLength).ToArray();
+                        // 每 40 字节为一节，跳过前 2 字节的西门子 String 头部 (最大长度和当前长度)
+                        byte[] cellBytes = rawData.Skip(i * 40 + 2).Take(barcodeLength).ToArray();
                         // 过滤非打印字符并修剪
                         string code = System.Text.Encoding.ASCII.GetString(cellBytes).Trim('\0', ' ', '\r', '\n');
                         allBarcodes.Add(code);
@@ -315,34 +355,52 @@ public class PlcService : BackgroundService
             {
                 if (_plc != null && _plc.IsConnected)
                 {
-                    // 1. 监控 A 面
+                    // 1. 监控 A 面 - 直接使用配置地址
                     if (!string.IsNullOrEmpty(_aStackFinishAddress))
                     {
                         var valA = await ReadValueAsync(_aStackFinishAddress);
                         if (valA is bool bA && bA)
                         {
                             int layers = 0;
+                            int moduleSn = 0;
+                            int dbNum = _aStackDbNum;
                             if (!string.IsNullOrEmpty(_cellLayerAddress)) {
-                                var layerVal = await ReadValueAsync(_cellLayerAddress);
+                                var layerAddrA = GetSideAgnosticAddress(_cellLayerAddress, dbNum);
+                                var layerVal = await ReadValueAsync(layerAddrA);
                                 layers = Convert.ToInt32(layerVal);
                             }
-                            await HandlePlcTrigger("A面", layers);
+                            if (!string.IsNullOrEmpty(_moduleSnAddress)) {
+                                var snAddrA = GetSideAgnosticAddress(_moduleSnAddress, dbNum);
+                                var snVal = await ReadValueAsync(snAddrA);
+                                moduleSn = Convert.ToInt32(snVal);
+                            }
+                            Console.WriteLine($"[Trigger] A面触发, DB: {dbNum}, 层数: {layers}, 模组序号: {moduleSn}");
+                            await HandlePlcTrigger("A面", layers, moduleSn, dbNum);
                             await WriteValueAsync(_aStackFinishAddress, false); // 立即复位
                         }
                     }
 
-                    // 2. 监控 B 面
+                    // 2. 监控 B 面 - 直接使用配置地址
                     if (!string.IsNullOrEmpty(_bStackFinishAddress))
                     {
                         var valB = await ReadValueAsync(_bStackFinishAddress);
                         if (valB is bool bB && bB)
                         {
                             int layers = 0;
+                            int moduleSn = 0;
+                            int dbNum = _bStackDbNum;
                             if (!string.IsNullOrEmpty(_cellLayerAddress)) {
-                                var layerVal = await ReadValueAsync(_cellLayerAddress);
+                                var layerAddrB = GetSideAgnosticAddress(_cellLayerAddress, dbNum);
+                                var layerVal = await ReadValueAsync(layerAddrB);
                                 layers = Convert.ToInt32(layerVal);
                             }
-                            await HandlePlcTrigger("B面", layers);
+                            if (!string.IsNullOrEmpty(_moduleSnAddress)) {
+                                var snAddrB = GetSideAgnosticAddress(_moduleSnAddress, dbNum);
+                                var snVal = await ReadValueAsync(snAddrB);
+                                moduleSn = Convert.ToInt32(snVal);
+                            }
+                            Console.WriteLine($"[Trigger] B面触发, DB: {dbNum}, 层数: {layers}, 模组序号: {moduleSn}");
+                            await HandlePlcTrigger("B面", layers, moduleSn, dbNum);
                             await WriteValueAsync(_bStackFinishAddress, false); // 立即复位
                         }
                     }
@@ -357,11 +415,11 @@ public class PlcService : BackgroundService
         }
     }
 
-    private async Task HandlePlcTrigger(string side, int layers)
+    private async Task HandlePlcTrigger(string side, int layers, int moduleSn, int dbNum)
     {
-        _logger.LogInformation("[Trigger] 检测到 {Side} 堆叠完成信号! 层数: {Layers}", side, layers);
-        await LogToFrontend("success", $"[PLC触发] 收到 {side} 堆叠完成信号，当前读到电芯层数: {layers}");
-        await _hubContext.Clients.All.SendAsync("ReceivePlcTrigger", new { side, layers, time = DateTime.Now.ToString("HH:mm:ss") });
+        _logger.LogInformation("[Trigger] 检测到 {Side} 堆叠完成信号! 层数: {Layers}, 模组序号: {ModuleSn}, DB: {DB}", side, layers, moduleSn, dbNum);
+        await LogToFrontend("success", $"[PLC触发] 收到 {side} 堆叠完成信号，电芯层数: {layers}, 模组序号: {moduleSn} (DB{dbNum})");
+        await _hubContext.Clients.All.SendAsync("ReceivePlcTrigger", new { side, layers, moduleSn, dbNum, time = DateTime.Now.ToString("HH:mm:ss") });
     }
 
     private async Task LogToFrontend(string type, string message)
@@ -398,12 +456,15 @@ public class PlcService : BackgroundService
                 string aStack = root.TryGetProperty("plcAStackFinishAddress", out var pA) ? pA.GetString() ?? "" : "";
                 string bStack = root.TryGetProperty("plcBStackFinishAddress", out var pB) ? pB.GetString() ?? "" : "";
                 string layers = root.TryGetProperty("plcCellLayerAddress", out var pL) ? pL.GetString() ?? "" : "";
+                string moduleSn = root.TryGetProperty("plcModuleSnAddress", out var pM) ? pM.GetString() ?? "" : "";
                 string c1 = root.TryGetProperty("col1StartAddr", out var pc1) ? pc1.GetString() ?? "" : "";
                 string c2 = root.TryGetProperty("col2StartAddr", out var pc2) ? pc2.GetString() ?? "" : "";
                 string c3 = root.TryGetProperty("col3StartAddr", out var pc3) ? pc3.GetString() ?? "" : "";
+                int aDb = root.TryGetProperty("plcAStackDbNum", out var paDb) ? paDb.GetInt32() : 1590;
+                int bDb = root.TryGetProperty("plcBStackDbNum", out var pbDb) ? pbDb.GetInt32() : 1591;
 
-                SetConnection(ip, cpu, rack, slot, hb, aStack, bStack, layers, c1, c2, c3);
-                Console.WriteLine($"[Init] 启动自加载成功: IP={ip}, L={layers}, C1={c1}, C2={c2}, C3={c3}");
+                SetConnection(ip, cpu, rack, slot, hb, aStack, bStack, layers, moduleSn, c1, c2, c3, aDb, bDb);
+                Console.WriteLine($"[Init] 启动自加载成功: IP={ip}, L={layers}, M={moduleSn}, ADB={aDb}, BDB={bDb}");
             }
         }
         catch (Exception ex)

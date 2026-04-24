@@ -139,6 +139,14 @@ function handleCancel() {
                 <input v-model="form.plcHeartbeatAddress" type="text" class="input-field" placeholder="例如 DB1.DBX0.0" />
               </div>
               <div class="field-group">
+                <label>A面数据块编号 (DB Number)</label>
+                <input v-model.number="form.plcAStackDbNum" type="number" class="input-field" placeholder="例如 1590" />
+              </div>
+              <div class="field-group">
+                <label>B面数据块编号 (DB Number)</label>
+                <input v-model.number="form.plcBStackDbNum" type="number" class="input-field" placeholder="例如 1591" />
+              </div>
+              <div class="field-group">
                 <label>A面堆叠完成信号</label>
                 <input v-model="form.plcAStackFinishAddress" type="text" class="input-field" placeholder="例如 DB1.DBX0.1" />
               </div>
@@ -149,6 +157,10 @@ function handleCancel() {
               <div class="field-group">
                 <label>电芯层数点位 (BYTE)</label>
                 <input v-model="form.plcCellLayerAddress" type="text" class="input-field" placeholder="例如: DB1.DBB1" />
+              </div>
+              <div class="field-group">
+                <label>堆叠模组序号点位 (BYTE/WORD)</label>
+                <input v-model="form.plcModuleSnAddress" type="text" class="input-field" placeholder="例如: DB1.DBB2" />
               </div>
               <div class="field-group">
                 <label>每层电芯个数</label>

@@ -4,6 +4,7 @@ export interface RecipeMaster {
   cellCount: string;
   plcModel: string;
   createTime: string;
+  isActive?: boolean;
 }
 
 export interface RecipeDetail {

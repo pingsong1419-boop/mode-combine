@@ -9,6 +9,7 @@ const DETAIL_KEY = 'mes_recipe_detail_v1'
 const masters = ref<RecipeMaster[]>([])
 const details = ref<RecipeDetail[]>([])
 const selectedMasterId = ref<string | null>(null)
+const emit = defineEmits(['change'])
 
 // Modals
 const showMasterModal = ref(false)
@@ -37,6 +38,7 @@ async function loadRecipes() {
   try {
     const res = await fetch(API_URL)
     const data = await res.json()
+    console.log('[Recipe] 从后端加载原始数据:', data);
     masters.value = data.masters || []
     details.value = data.details || []
     if (masters.value.length > 0 && !selectedMasterId.value) selectedMasterId.value = masters.value[0].id
@@ -79,11 +81,36 @@ function openEditMaster(item: RecipeMaster) {
 }
 
 async function deleteMaster(id: string) {
-  if (!confirm('确定删除该项目及其所有子项吗？')) return
-  masters.value = masters.value.filter(m => m.id !== id)
-  details.value = details.value.filter(d => d.masterId !== id)
-  if (selectedMasterId.value === id) selectedMasterId.value = masters.value[0]?.id || null
+  console.log('[Recipe] 触发删除项目, ID:', id);
+  try {
+    const oldLen = masters.value.length;
+    masters.value = masters.value.filter(m => m && String(m.id) !== String(id))
+    details.value = details.value.filter(d => d && String(d.masterId) !== String(id))
+    console.log(`[Recipe] 项目过滤完成: ${oldLen} -> ${masters.value.length}`);
+    
+    if (String(selectedMasterId.value) === String(id)) {
+      selectedMasterId.value = masters.value[0]?.id || null
+    }
+    await saveToBackend()
+    emit('change')
+    alert('项目已成功删除')
+  } catch (e: any) {
+    console.error('[Recipe] 删除项目逻辑执行异常:', e);
+    alert('删除失败: ' + e.message)
+  }
+}
+
+async function toggleActive(id: string) {
+  console.log('[Recipe] 切换启用状态:', id);
+  masters.value.forEach(m => {
+    if (String(m.id) === String(id)) {
+      m.isActive = !m.isActive
+    } else {
+      m.isActive = false
+    }
+  })
   await saveToBackend()
+  emit('change')
 }
 
 async function handleMasterSubmit() {
@@ -98,8 +125,13 @@ async function handleMasterSubmit() {
     }
     masters.value.push(newMaster)
     selectedMasterId.value = newMaster.id
+    // 如果是第一个项目，自动启用
+    if (masters.value.length === 1) {
+      newMaster.isActive = true
+    }
   }
   await saveToBackend()
+  emit('change')
   showMasterModal.value = false
 }
 
@@ -142,9 +174,17 @@ async function handleDetailSubmit() {
 }
 
 async function deleteDetail(id: string) {
-  if (!confirm('确定删除该子项吗？')) return
-  details.value = details.value.filter(d => d.id !== id)
-  await saveToBackend()
+  console.log('[Recipe] 触发删除子项, ID:', id);
+  try {
+    const oldLen = details.value.length;
+    details.value = details.value.filter(d => d && String(d.id) !== String(id))
+    console.log(`[Recipe] 子项过滤完成: ${oldLen} -> ${details.value.length}`);
+    await saveToBackend()
+    alert('子项已成功删除')
+  } catch (e: any) {
+    console.error('[Recipe] 删除子项逻辑执行异常:', e);
+    alert('删除失败: ' + e.message)
+  }
 }
 </script>
 
@@ -160,6 +200,7 @@ async function deleteDetail(id: string) {
         <table class="data-table">
           <thead>
             <tr>
+              <th width="80">启用状态</th>
               <th>产品名称</th>
               <th>电芯数量</th>
               <th>PLC型号</th>
@@ -168,13 +209,18 @@ async function deleteDetail(id: string) {
             </tr>
           </thead>
           <tbody>
-            <tr v-for="m in masters" :key="m.id" :class="{ selected: selectedMasterId === m.id }" @click="selectedMasterId = m.id">
+            <tr v-for="m in masters" :key="m.id" 
+                :class="{ selected: selectedMasterId === m.id, active: m.isActive }" 
+                @click="selectedMasterId = m.id">
+              <td class="text-center">
+                <input type="checkbox" :checked="m.isActive" @click.stop="toggleActive(m.id)" />
+              </td>
               <td>{{ m.productName }}</td>
               <td>{{ m.cellCount }}</td>
               <td>{{ m.plcModel }}</td>
               <td class="time">{{ m.createTime }}</td>
               <td class="ops">
-                <button class="text-btn blue" @click.stop="openAddDetail">添加箱模组</button>
+                <button class="text-btn blue" @click.stop="selectedMasterId = m.id; openAddDetail()">添加箱模组</button>
                 <button class="text-btn" @click.stop="openEditMaster(m)">修改</button>
                 <button class="text-btn red" @click.stop="deleteMaster(m.id)">删除</button>
               </td>
@@ -298,6 +344,8 @@ async function deleteDetail(id: string) {
 .data-table td { padding: 8px 10px; border-bottom: 1px solid rgba(100, 181, 246, 0.05); color: #c8d6e5; }
 .data-table tr:hover { background: rgba(66, 165, 245, 0.05); cursor: pointer; }
 .data-table tr.selected { background: rgba(66, 165, 245, 0.12); border-left: 3px solid #42a5f5; }
+.data-table tr.active { background: rgba(0, 230, 118, 0.05); }
+.data-table tr.active td { color: #00e676; font-weight: 600; }
 .time { color: #546e7a; font-size: 11px; font-family: monospace; }
 .ops { display: flex; gap: 10px; min-width: 140px; }
 .text-btn { background: none; border: none; padding: 0; cursor: pointer; font-size: 12px; color: #90caf9; text-decoration: underline; }

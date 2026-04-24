@@ -108,10 +108,13 @@ watch(
 function handleBatchVerify(code: string) {
   if (!code) return
 
+  // 清洗条码，移除西门子长度位等非数据字符
+  const cleanCode = code.replace(/^[\x00-\x1F\x28]+/, '').trim();
+  
   // 规则：只要条码的前 N 位能匹配上物料列表中的任意一项即可
   const target = taskList.value.find(t => {
-    const prefixMatch = code.startsWith(t.material_No)
-    const lengthMatch = t.noLength > 0 ? code.length === Number(t.noLength) : true
+    const prefixMatch = cleanCode.startsWith(t.material_No)
+    const lengthMatch = t.noLength > 0 ? cleanCode.length === Number(t.noLength) : true
     return prefixMatch && lengthMatch
   })
 

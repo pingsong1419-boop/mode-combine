@@ -39,12 +39,18 @@ export interface AppConfig {
   plcRack?: number
   plcSlot?: number
   plcHeartbeatAddress?: string
+  /** A面数据块编号 (DB Number) */
+  plcAStackDbNum?: number
+  /** B面数据块编号 (DB Number) */
+  plcBStackDbNum?: number
   /** A面堆叠完成信号点位 */
   plcAStackFinishAddress?: string
   /** B面堆叠完成信号点位 */
   plcBStackFinishAddress?: string
   /** 电芯层数读取点位 (BYTE) */
   plcCellLayerAddress?: string
+  /** 堆叠模组序号点位 (BYTE/WORD) */
+  plcModuleSnAddress?: string
   /** 每层电芯个数 (整型) */
   cellsPerLayer?: number
   

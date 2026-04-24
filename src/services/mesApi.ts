@@ -96,3 +96,11 @@ export async function checkDuplicateBarcode(apiUrl: string, body: object): Promi
 export async function getCellData(apiUrl: string, body: object): Promise<any> {
   return postRequest<any>(apiUrl, body)
 }
+/**
+ * 步骤六：推送生产结果数据到 MES
+ * @param apiUrl 推送接口地址
+ * @param body 请求体 (包含条码、判定结果、过程参数等)
+ */
+export async function pushToMes(apiUrl: string, body: object): Promise<any> {
+  return postRequest<any>(apiUrl, body)
+}

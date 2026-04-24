@@ -36,8 +36,9 @@ app.MapGet("/", () => "MES PLC Backend is Running");
 // --- PLC Commands ---
 app.MapPost("/api/plc/config", (PlcRequest req, PlcService service) => {
     service.SetConnection(req.Ip, req.CpuType, req.Rack, req.Slot, req.HeartbeatAddress, 
-        req.AStackAddr, req.BStackAddr, req.CellLayerAddr,
-        req.Col1StartAddr, req.Col2StartAddr, req.Col3StartAddr);
+        req.AStackAddr, req.BStackAddr, req.CellLayerAddr, req.ModuleSnAddr,
+        req.Col1StartAddr, req.Col2StartAddr, req.Col3StartAddr,
+        req.AStackDbNum, req.BStackDbNum);
     return Results.Ok(new { message = "PLC Config Updated" });
 });
 
@@ -59,8 +60,9 @@ app.MapPost("/api/plc/read-barcodes", async (HttpContext context, PlcService ser
     string c1 = root.GetProperty("col1Addr").GetString() ?? "";
     string c2 = root.GetProperty("col2Addr").GetString() ?? "";
     string c3 = root.GetProperty("col3Addr").GetString() ?? "";
+    int dbNum = root.TryGetProperty("dbNum", out var pDb) ? pDb.GetInt32() : 0;
 
-    var codes = await service.ReadCellBarcodesAsync(layers, barcodeLength, c1, c2, c3);
+    var codes = await service.ReadCellBarcodesAsync(layers, barcodeLength, c1, c2, c3, dbNum);
     return Results.Ok(new { barcodes = codes });
 });
 

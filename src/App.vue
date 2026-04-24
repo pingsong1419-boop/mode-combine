@@ -2,7 +2,7 @@
 import { ref, reactive, computed, onMounted, nextTick, onUnmounted, watch } from 'vue'
 import { HubConnectionBuilder, LogLevel, type HubConnection } from '@microsoft/signalr'
 import type { AppConfig, OrderInfo, RouteStep, TestResult, WorkStep } from './types/mes'
-import { getOrderByProcess, getRouteList, checkSingleMaterial, checkDuplicateBarcode, getCellData } from './services/mesApi'
+import { getOrderByProcess, getRouteList, checkSingleMaterial, checkDuplicateBarcode, getCellData, pushToMes } from './services/mesApi'
 import ConfigModal from './components/ConfigModal.vue'
 import RouteTable from './components/RouteTable.vue'
 import ApiDetail from './components/ApiDetail.vue'
@@ -11,6 +11,7 @@ import MaterialScanner from './components/MaterialScanner.vue'
 import RecipeSettings from './components/RecipeSettings.vue'
 import PlcInteraction from './components/PlcInteraction.vue'
 import OrderSelectModal from './components/OrderSelectModal.vue'
+import OrderCache from './components/OrderCache.vue'
 import PlcMonitor from './components/PlcMonitor.vue'
 import { MOCK_ORDER_INFO, MOCK_ROUTE_DATA } from './utils/mockData'
 import { BACKEND_URL, SIGNALR_HUB_URL, DEFAULT_APP_CONFIG } from './utils/constants'
@@ -38,6 +39,9 @@ async function fetchConfig() {
     addLog('error', '无法从服务器获取配置')
   }
 }
+
+const currentModuleSn = ref(0)
+const currentLayers = ref(0)
 
 async function initSignalR() {
   hubConnection = new HubConnectionBuilder()
@@ -77,7 +81,9 @@ async function initSignalR() {
 
   // 新增：监听后端发送的自动触发信号
   hubConnection.on('ReceivePlcTrigger', async (data: any) => {
-    addLog('info', `[PLC自动触发] 收到 ${data.side} 堆叠完成信号，正在采集电芯条码...`);
+    currentModuleSn.value = data.moduleSn || 0
+    currentLayers.value = data.layers || 0
+    addLog('info', `[PLC自动触发] 收到 ${data.side} 堆叠完成信号 (DB${data.dbNum})，序号: ${data.moduleSn}, 层数: ${data.layers}`);
     
     // 1. 批量读取条码逻辑
     try {
@@ -89,12 +95,20 @@ async function initSignalR() {
           barcodeLength: config.value.cellBarcodeLength || 24,
           col1Addr: config.value.col1StartAddr,
           col2Addr: config.value.col2StartAddr,
-          col3Addr: config.value.col3StartAddr
+          col3Addr: config.value.col3StartAddr,
+          dbNum: data.dbNum // 直接使用后端触发消息中带回的 DB 号，确保采集源一致
         })
       })
       if (res.ok) {
         const result = await res.json()
-        currentBarcodes.value = result.barcodes
+        // 对采集到的条码进行清洗，移除西门子 String 头部 (如果存在)
+        currentBarcodes.value = result.barcodes.map((c: string) => {
+          if (c && c.length > 0 && (c.startsWith('(') || c.charCodeAt(0) === 40)) {
+            // 如果条码以 '(' (0x28) 开头，可能是未处理的西门子头部，尝试进一步清洗
+            return c.replace(/^[\x00-\x1F\x28]+/, '').trim();
+          }
+          return c;
+        })
         addLog('success', '✅ 采集矩阵已更新，共读取 ' + result.barcodes.length + ' 个条码');
 
         // 2. 自动触发业务流，但不再修改界面输入框 (保持手动扫描框干净)
@@ -141,9 +155,12 @@ async function onConfigSaved(newConfig: AppConfig) {
         aStackAddr: newConfig.plcAStackFinishAddress,
         bStackAddr: newConfig.plcBStackFinishAddress,
         cellLayerAddr: newConfig.plcCellLayerAddress,
+        moduleSnAddr: newConfig.plcModuleSnAddress,
         col1StartAddr: newConfig.col1StartAddr,
         col2StartAddr: newConfig.col2StartAddr,
-        col3StartAddr: newConfig.col3StartAddr
+        col3StartAddr: newConfig.col3StartAddr,
+        aStackDbNum: newConfig.plcAStackDbNum,
+        bStackDbNum: newConfig.plcBStackDbNum
       })
     })
 
@@ -165,6 +182,10 @@ onMounted(async () => {
     await onConfigSaved(config.value)
   }
   await initSignalR()
+  
+  // 模拟一些初始日志
+  addLog('info', '系统初始化完成，等待 PLC 信号...')
+  await loadActiveRecipe()
 })
 
 onUnmounted(() => {
@@ -187,10 +208,31 @@ const logs = ref<any[]>([])
 const plcLogs = ref<any[]>([]) // 专门存储 PLC 监控原始数据
 const apiRecords = ref<ApiRecord[]>([])
 const currentBarcodes = ref<string[]>([]) // 新增：存储读取到的电芯条码
-const activeTab = ref<'route' | 'api' | 'log' | 'material' | 'info' | 'plc' | 'recipe' | 'monitor' | 'finalCheck'>('route')
+const activeTab = ref<'route' | 'api' | 'log' | 'material' | 'info' | 'plc' | 'recipe' | 'monitor' | 'finalCheck' | 'orderCache'>('route')
 const barcodeValidationResults = reactive<Record<string, { single: string, duplicate: string }>>({})
 const cellDetails = ref<Record<string, any>>({}) // 新增：存储电芯详细数据
 const cellDataLoading = ref(false)
+const isPushing = ref(false)
+const activeRecipeName = ref('未选择')
+
+async function loadActiveRecipe() {
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/recipe/config`)
+    if (res.ok) {
+      const data = await res.json()
+      const active = (data.masters || []).find((m: any) => m.isActive)
+      activeRecipeName.value = active ? active.productName : '未选择'
+    }
+  } catch (err) {
+    console.error('加载活动配方失败:', err)
+  }
+}
+
+watch(activeTab, (newTab, oldTab) => {
+  if (oldTab === 'recipe' && newTab !== 'recipe') {
+    loadActiveRecipe()
+  }
+})
 const moduleMaxCapacitySum = ref<number | string>('-')
 const moduleMinCapacitySum = ref<number | string>('-')
 const moduleCapacityDiff = ref<number | string>('-')
@@ -561,7 +603,9 @@ function getMatrixBarcode(layerIdx: number, colIdx: number): string {
   // 假设存储结构是：前 L 个是第 1 列，中间 L 个是第 2 列...
   const layers = matrixLayers.value
   const targetIdx = layerIdx + (colIdx * layers)
-  return currentBarcodes.value[targetIdx] || ''
+  const raw = currentBarcodes.value[targetIdx] || ''
+  // 再次确保清洗，移除控制字符和西门子长度位 (0x28)
+  return raw.replace(/^[\x00-\x1F\x28]+/, '').trim()
 }
 
 // 校验某一层的所有条码是否都符合规则
@@ -584,8 +628,10 @@ function isBarcodeValid(code: string): boolean {
   )
 
   return rules.some(rule => {
-    const prefixMatch = code.startsWith(rule.material_No)
-    const lengthMatch = rule.noLength > 0 ? code.length === Number(rule.noLength) : true
+    // 清洗传入的条码，确保没有 PLC 遗留的长度位字符
+    const cleanCode = code.replace(/^[\x00-\x1F\x28]+/, '').trim();
+    const prefixMatch = cleanCode.startsWith(rule.material_No)
+    const lengthMatch = rule.noLength > 0 ? cleanCode.length === Number(rule.noLength) : true
     return prefixMatch && lengthMatch
   })
 }
@@ -824,6 +870,46 @@ function resetResult() {
   resultMessage.value = ''
   addLog('info', '状态已复位，等待下一次触发');
 }
+
+async function handleFinalConfirm() {
+  if (!config.value.mesPushApiUrl) {
+    addLog('error', '未配置 MES 推送地址，无法上传')
+    setOK()
+    return
+  }
+
+  isPushing.value = true
+  addLog('info', '正在推送生产数据至 MES...')
+  
+  try {
+    const payload = {
+      productCode: productCode.value,
+      orderCode: orderInfo.value?.orderCode,
+      recipeName: activeRecipeName.value,
+      timestamp: new Date().toISOString(),
+      result: 'OK',
+      barcodes: currentBarcodes.value,
+      checkResults: qualityCheckResults.value,
+      // 聚合电芯详情
+      cellDetails: Object.keys(cellDetails.value).map(sn => ({
+        sn,
+        ...cellDetails.value[sn]
+      }))
+    }
+
+    const res = await pushToMes(config.value.mesPushApiUrl, payload)
+    addLog('success', '数据已成功推送到 MES 系统')
+    setOK()
+  } catch (err: any) {
+    addLog('error', `数据推送失败: ${err.message}`)
+    // 即便推送失败，也可以由人工决定是否放行，或者要求重试
+    if (confirm('数据推送失败，是否强行设为 OK 并继续？')) {
+      setOK()
+    }
+  } finally {
+    isPushing.value = false
+  }
+}
 </script>
 
 <template>
@@ -843,10 +929,30 @@ function resetResult() {
           <span class="heartbeat-label">PLC 心跳: {{ plcOnline ? (plcBitValue ? '脉冲(1)' : '在线(0)') : '离线' }}</span>
           <span class="heartbeat-time" v-if="plcOnline">{{ lastHeartbeatTime }}</span>
         </div>
-        <span class="process-badge">
-          <span class="label">当前工序：</span>
-          <span class="value">{{ config.technicsProcessCode || '未设置' }}</span>
-        </span>
+        <div class="header-stats">
+          <div class="stat-item">
+            <span class="stat-label">启动配方:</span>
+            <span class="stat-value c-green" style="color: #00e676; font-weight: bold;">{{ activeRecipeName }}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">当前工序：</span>
+            <span class="stat-value">{{ config.technicsProcessCode || '未设置' }}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">PLC 状态:</span>
+            <span class="stat-value" :class="plcOnline ? 'c-green' : 'c-red'">
+              {{ plcOnline ? '● 在线' : '○ 离线' }}
+            </span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">模块序号:</span>
+            <span class="stat-value highlight-blue">{{ currentModuleSn || '-' }}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">堆叠层数:</span>
+            <span class="stat-value highlight-orange">{{ currentLayers || '-' }}</span>
+          </div>
+        </div>
       </div>
       <div class="header-right">
         <button class="icon-btn" title="系统配置" @click="showConfig = true">
@@ -942,6 +1048,10 @@ function resetResult() {
           <button class="tab-btn" :class="{ active: activeTab === 'material' }" @click="activeTab = 'material'">
             <span>📦</span> 物料验证
           </button>
+          <button class="tab-btn" :class="{ active: activeTab === 'orderCache' }" @click="activeTab = 'orderCache'">
+            <span>📂</span> 工单缓存
+            <span v-if="pendingOrders.length" class="tab-count">{{ pendingOrders.length }}</span>
+          </button>
           <button class="tab-btn" :class="{ active: activeTab === 'info' }" @click="activeTab = 'info'">
             <span>ℹ️</span> 获取信息
           </button>
@@ -971,6 +1081,9 @@ function resetResult() {
           <div v-show="activeTab === 'route'" class="tab-pane">
             <div v-if="routeError" class="error-box"><span>⚠️</span> {{ routeError }}</div>
             <RouteTable :steps="routeSteps" :loading="routeLoading" />
+          </div>
+          <div v-show="activeTab === 'orderCache'" class="tab-pane">
+            <OrderCache :orders="pendingOrders" @select="onOrderSelected" />
           </div>
           <div v-show="activeTab === 'material'" class="tab-pane flex-column">
             <MaterialScanner 
@@ -1176,7 +1289,9 @@ function resetResult() {
                 </div>
                 <div style="display: flex; gap: 12px;">
                   <button class="btn-primary" @click="activeTab = 'info'">返回报表</button>
-                  <button class="btn-success" :disabled="testResult !== 'IDLE' || qualityCheckResults.length === 0" @click="setOK">确认并提交</button>
+                  <button class="btn-success" :disabled="testResult !== 'IDLE' || qualityCheckResults.length === 0 || isPushing" @click="handleFinalConfirm">
+                    {{ isPushing ? '正在上传...' : '确认并提交' }}
+                  </button>
                 </div>
               </div>
             </div>
@@ -1195,7 +1310,7 @@ function resetResult() {
             <ApiDetail :records="apiRecords" />
           </div>
           <div v-show="activeTab === 'recipe'" class="tab-pane">
-            <RecipeSettings />
+            <RecipeSettings @change="loadActiveRecipe" />
           </div>
           <div v-show="activeTab === 'monitor'" class="tab-pane">
             <PlcMonitor :logs="plcLogs" />
@@ -1233,9 +1348,11 @@ function resetResult() {
 .brand-title { font-size: 15px; font-weight: 700; color: #e3f2fd; line-height: 1.2; }
 .brand-sub { font-size: 10px; color: #546e7a; letter-spacing: 0.5px; }
 .header-center { flex: 1; display: flex; justify-content: center; }
-.process-badge { background: rgba(21, 101, 192, 0.2); border: 1px solid rgba(100, 181, 246, 0.2); border-radius: 20px; padding: 4px 16px; font-size: 12px; display: flex; gap: 6px; }
+.process-badge { background: rgba(21, 101, 192, 0.2); border: 1px solid rgba(100, 181, 246, 0.2); border-radius: 20px; padding: 4px 16px; font-size: 12px; display: flex; gap: 6px; margin-right: 8px; }
+.recipe-badge { background: rgba(0, 230, 118, 0.05); border-color: rgba(0, 230, 118, 0.2); }
 .process-badge .label { color: #78909c; }
 .process-badge .value { color: #42a5f5; font-weight: 600; }
+.recipe-badge .value { color: #00e676; }
 
 .heartbeat-status {
   display: flex;
@@ -1279,6 +1396,15 @@ function resetResult() {
   70% { box-shadow: 0 0 0 6px rgba(0, 230, 118, 0); }
   100% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0); }
 }
+
+.header-stats { display: flex; align-items: center; gap: 16px; }
+.stat-item { display: flex; align-items: center; gap: 6px; background: rgba(0, 0, 0, 0.2); padding: 4px 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.05); }
+.stat-label { font-size: 11px; color: #90a4ae; }
+.stat-value { font-size: 12px; font-weight: 600; color: #cfd8dc; }
+.stat-value.c-green { color: #00e676; }
+.stat-value.c-red { color: #ff5252; }
+.stat-value.highlight-blue { color: #42a5f5; font-weight: bold; }
+.stat-value.highlight-orange { color: #ff9800; font-weight: bold; }
 
 .header-right { display: flex; gap: 8px; }
 .icon-btn { background: rgba(21, 101, 192, 0.2); border: 1px solid rgba(100, 181, 246, 0.2); border-radius: 6px; color: #90caf9; padding: 5px 14px; font-size: 12px; cursor: pointer; transition: all 0.2s; }

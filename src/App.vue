@@ -2,7 +2,7 @@
 import { ref, reactive, computed, onMounted, nextTick, onUnmounted, watch } from 'vue'
 import { HubConnectionBuilder, LogLevel, type HubConnection } from '@microsoft/signalr'
 import type { AppConfig, OrderInfo, RouteStep, TestResult, WorkStep } from './types/mes'
-import { getOrderByProcess, getRouteList, checkSingleMaterial, checkDuplicateBarcode, getCellData, pushToMes } from './services/mesApi'
+import { getOrderByProcess, getRouteList, checkSingleMaterial, checkDuplicateBarcode, getCellData, pushToMes, createModuleCode } from './services/mesApi'
 import ConfigModal from './components/ConfigModal.vue'
 // import RouteTable from './components/RouteTable.vue'
 import ApiDetail from './components/ApiDetail.vue'
@@ -213,6 +213,7 @@ const barcodeValidationResults = reactive<Record<string, { single: string, dupli
 const cellDetails = ref<Record<string, any>>({}) // 新增：存储电芯详细数据
 const cellDataLoading = ref(false)
 const isPushing = ref(false)
+const generatedModuleCode = ref('')
 const activeRecipeName = ref('未选择')
 const activeRecipeId = ref<string | null>(null)
 const recipeDetails = ref<RecipeDetail[]>([])
@@ -395,6 +396,10 @@ async function fetchCellDetails() {
     addLog('success', `同步完成，成功更新 ${Object.keys(cellDetails.value).length} 条详细属性 (耗时: ${duration}ms)`)
     // 同步完成后切回获取信息页查看结果
     activeTab.value = 'finalCheck'
+    addLog('info', '数据同步完成，1.5秒后将自动执行终校验提交...')
+    setTimeout(() => {
+      handleFinalConfirm()
+    }, 1500)
   } catch (err: any) {
     addLog('error', `批量同步失败: ${err.message}`)
     rec.status = 'error'
@@ -509,6 +514,7 @@ function resetAll() {
   orderInfo.value = null; orderError.value = ''; routeSteps.value = [];
   routeError.value = ''; testResult.value = 'IDLE'; resultMessage.value = '';
   apiRecords.value = [];
+  generatedModuleCode.value = '';
 }
 
 async function handleScan(overrideCode?: string) {
@@ -667,10 +673,7 @@ async function simulateBarcodeRead() {
   }
 }
 
-function simulatePlcTrigger() {
-  addLog('info', '手动收到 PLC 触发信号 (模拟)')
-  handleScan()
-}
+
 
 // 计算总层数
 const matrixLayers = computed(() => {
@@ -939,29 +942,13 @@ async function fetchRouteList(routeCode: string, targetTab = 'material') {
   } finally { routeLoading.value = false }
 }
 
-function setOK() {
-  testResult.value = 'OK'
-  resultMessage.value = '测试综合判定通过'
-  addLog('success', '人工判定 OK')
-  activeTab.value = 'info' // 验证完成后自动跳转到“获取信息”标签页
-}
 
-function setNG() {
-  testResult.value = 'NG'
-  resultMessage.value = '测试综合判定不通过'
-  addLog('error', '人工判定 NG')
-}
-
-function resetResult() {
-  testResult.value = 'IDLE'
-  resultMessage.value = ''
-  addLog('info', '状态已复位，等待下一次触发');
-}
 
 async function handleFinalConfirm() {
   if (!config.value.mesPushApiUrl) {
     addLog('error', '未配置 MES 推送地址，无法上传')
-    setOK()
+    testResult.value = 'OK'
+    resultMessage.value = '测试综合判定通过'
     return
   }
 
@@ -988,13 +975,69 @@ async function handleFinalConfirm() {
 
     const res = await pushToMes(config.value.mesPushApiUrl, payload)
     addLog('success', '数据已成功推送到 MES 系统')
-    setOK()
+    
+    testResult.value = 'OK'
+    resultMessage.value = '测试综合判定通过'
+    
+    // ================ 新增逻辑：生成模块码 ================
+    if (config.value.codeCreateApiUrl) {
+      activeTab.value = 'api' // 自动跳转到接口交互
+      addLog('info', '正在请求生成模块码...')
+      
+      // 提取模块规格后缀：CODERULE 参数应与界面显示的“模块规格”一致
+      const physicalSpecsValue = (currentLayers.value !== null && currentLayers.value !== undefined && config.value.cellsPerLayer)
+        ? (currentLayers.value * config.value.cellsPerLayer)
+        : null
+      
+      // 优先使用计算出的物理规格，若无则回退到工单 specsCode 提取数字
+      let suffix = ''
+      if (physicalSpecsValue !== null) {
+        suffix = String(physicalSpecsValue)
+      } else {
+        const specs = orderInfo.value?.specsCode || ''
+        const match = specs.match(/\d+$/)
+        suffix = match ? match[0] : specs
+      }
+      
+      const codePayload = {
+        "CODERULE": `${suffix}s`,
+        "PHYSICSLEVEL": "0"
+      }
+      
+      const t0_gen = Date.now()
+      const recGen = reactive<ApiRecord>({ 
+        title: '生成模块码', 
+        url: config.value.codeCreateApiUrl, 
+        status: 'pending', 
+        time: new Date().toLocaleTimeString(), 
+        reqBody: codePayload 
+      })
+      apiRecords.value.unshift(recGen)
+
+      try {
+        const createRes = await createModuleCode(config.value.codeCreateApiUrl!, codePayload)
+        recGen.status = 'success'
+        recGen.resBody = createRes
+        recGen.duration = Date.now() - t0_gen
+        
+        // 提取生成的模块码：从响应报文的 message 字段获取
+        const gCode = createRes.message || createRes.data || (typeof createRes === 'string' ? createRes : '')
+        if (gCode) {
+          generatedModuleCode.value = gCode
+          addLog('success', `模块码生成成功: ${gCode}`)
+        }
+      } catch (genErr: any) {
+        recGen.status = 'error'
+        recGen.resBody = { error: genErr.message }
+        addLog('error', `模块码生成失败: ${genErr.message}`)
+      }
+    }
+    // ====================================================
   } catch (err: any) {
     addLog('error', `数据推送失败: ${err.message}`)
-    // 即便推送失败，也可以由人工决定是否放行，或者要求重试
-    if (confirm('数据推送失败，是否强行设为 OK 并继续？')) {
-      setOK()
-    }
+    // 自动降级处理：推送失败也视为完成并继续下一步
+    testResult.value = 'OK'
+    resultMessage.value = '测试综合判定通过 (推送异常已忽略)'
   } finally {
     isPushing.value = false
   }
@@ -1048,34 +1091,24 @@ async function handleFinalConfirm() {
     <main class="app-main">
       <section class="left-panel">
         <div class="card scan-card">
-          <div class="card-title"><span class="step-badge">1</span> 扫描产品条码</div>
-          <div class="scan-input-wrap" :class="{ 'scanning': orderLoading }">
-            <span class="scan-icon">📷</span>
-            <input
-              ref="scanInputRef"
-              v-model="productCode"
-              type="text"
-              placeholder="请扫描或输入产品条码..."
-              class="scan-input"
-              :disabled="orderLoading || routeLoading"
-              @keydown.enter="handleScan"
-            />
-            <button
-              class="scan-btn"
-              :disabled="orderLoading || !productCode.trim()"
-              @click="handleScan"
-            >
-              {{ orderLoading ? '查询中...' : '查询' }}
-            </button>
-            <button
-              class="plc-mock-btn"
-              title="模拟 PLC 触发信号"
-              @click="simulatePlcTrigger"
-            >
-              🤖 PLC
-            </button>
+          <div class="card-title"><span class="step-badge">1</span> 生成模块码</div>
+          <div class="product-sn-display" :class="{ 'active': productCode || generatedModuleCode, 'is-generated': !!generatedModuleCode, 'loading': orderLoading }">
+            <span class="sn-icon">{{ generatedModuleCode ? '📦' : '🆔' }}</span>
+            <div class="sn-content">
+              <template v-if="generatedModuleCode">
+                <span class="sn-label" style="color: #fbc02d;">已生成模块码：</span>
+                <span class="sn-value" style="color: #fbc02d; font-size: 16px;">{{ generatedModuleCode }}</span>
+              </template>
+              <template v-else-if="productCode">
+                <span class="sn-label">当前处理 SN：</span>
+                <span class="sn-value">{{ productCode }}</span>
+              </template>
+              <template v-else>
+                <span class="sn-label">等待输入或采集...</span>
+              </template>
+            </div>
+            <div v-if="orderLoading" class="loading-spin" />
           </div>
-          <p class="scan-hint">扫描后请按 <kbd>Enter</kbd> 提交，或点击 <b>🤖 PLC</b> 模拟外部触发</p>
         </div>
 
         <div class="card info-card">
@@ -1370,12 +1403,6 @@ async function handleFinalConfirm() {
                   <span v-else-if="qualityCheckResults.some(r => r.result === 'FAIL')" class="text-red font-bold">存在不合格项</span>
                   <span v-else class="text-gray">待校验</span>
                 </div>
-                <div style="display: flex; gap: 12px;">
-                  <button class="btn-primary" @click="activeTab = 'info'">返回报表</button>
-                  <button class="btn-success" :disabled="testResult !== 'IDLE' || qualityCheckResults.length === 0 || isPushing" @click="handleFinalConfirm">
-                    {{ isPushing ? '正在上传...' : '确认并提交' }}
-                  </button>
-                </div>
               </div>
             </div>
           </div>
@@ -1523,16 +1550,25 @@ async function handleFinalConfirm() {
 .card { background: #131929; border: 1px solid rgba(100, 181, 246, 0.12); border-radius: 10px; padding: 14px; flex-shrink: 0; }
 .card-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: #90caf9; margin-bottom: 12px; letter-spacing: 0.5px; }
 .step-badge { width: 20px; height: 20px; background: linear-gradient(135deg, #1565c0, #0d47a1); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; color: white; font-weight: 700; flex-shrink: 0; }
-.scan-input-wrap { display: flex; align-items: center; gap: 8px; background: #0d1117; border: 2px solid rgba(100, 181, 246, 0.2); border-radius: 8px; padding: 4px 6px 4px 12px; transition: border-color 0.2s, box-shadow 0.2s; }
-.scan-input-wrap.scanning { border-color: #42a5f5; box-shadow: 0 0 0 3px rgba(66, 165, 245, 0.1), 0 0 20px rgba(66, 165, 245, 0.2); }
-.scan-input-wrap:focus-within { border-color: #42a5f5; box-shadow: 0 0 0 3px rgba(66, 165, 245, 0.1); }
-.scan-icon { font-size: 16px; flex-shrink: 0; }
-.scan-input { flex: 1; background: none; border: none; outline: none; color: #e0e6ed; font-size: 14px; font-family: 'Consolas', monospace; padding: 8px 0; min-width: 0; }
-.scan-input::placeholder { color: #37474f; }
-.scan-btn { background: linear-gradient(135deg, #1565c0, #0d47a1); border: none; border-radius: 6px; color: #e3f2fd; padding: 7px 16px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; white-space: nowrap; flex-shrink: 0; }
-.scan-btn:hover:not(:disabled) { background: linear-gradient(135deg, #1976d2, #1565c0); box-shadow: 0 4px 12px rgba(21, 101, 192, 0.4); }
-.scan-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.scan-hint { font-size: 11px; color: #37474f; margin: 6px 0 0 0; }
+.product-sn-display { 
+  display: flex; 
+  align-items: center; 
+  gap: 12px; 
+  background: #0d1117; 
+  border: 1px solid rgba(100, 181, 246, 0.1); 
+  border-radius: 8px; 
+  padding: 12px 16px; 
+  transition: all 0.3s;
+  min-height: 52px;
+}
+.product-sn-display.active { border-color: rgba(66, 165, 245, 0.4); background: rgba(21, 101, 192, 0.05); box-shadow: inset 0 0 12px rgba(66, 165, 245, 0.05); }
+.product-sn-display.is-generated { border-color: rgba(251, 192, 45, 0.4); background: rgba(251, 192, 45, 0.05); box-shadow: inset 0 0 12px rgba(251, 192, 45, 0.05); }
+.product-sn-display.loading { border-color: #42a5f5; }
+.sn-icon { font-size: 18px; opacity: 0.8; }
+.sn-content { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.sn-label { font-size: 10px; color: #546e7a; text-transform: uppercase; letter-spacing: 0.5px; }
+.sn-value { font-family: 'Consolas', monospace; font-size: 15px; color: #e3f2fd; font-weight: 700; word-break: break-all; }
+.product-sn-display.active .sn-value { color: #42a5f5; }
 kbd { background: rgba(100, 181, 246, 0.1); border: 1px solid rgba(100, 181, 246, 0.2); border-radius: 3px; padding: 1px 5px; font-size: 10px; color: #64b5f6; }
 .info-scroll-container { max-height: 200px; overflow-y: auto; padding-right: 4px; margin-top: 4px; }
 .info-scroll-container::-webkit-scrollbar { width: 4px; }

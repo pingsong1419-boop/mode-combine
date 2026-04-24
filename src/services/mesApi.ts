@@ -104,3 +104,11 @@ export async function getCellData(apiUrl: string, body: object): Promise<any> {
 export async function pushToMes(apiUrl: string, body: object): Promise<any> {
   return postRequest<any>(apiUrl, body)
 }
+/**
+ * 步骤七：生成模块码
+ * @param apiUrl 接口地址
+ * @param body 请求体
+ */
+export async function createModuleCode(apiUrl: string, body: object): Promise<any> {
+  return postRequest<any>(apiUrl, body)
+}

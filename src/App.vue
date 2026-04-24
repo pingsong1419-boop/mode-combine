@@ -4,7 +4,7 @@ import { HubConnectionBuilder, LogLevel, type HubConnection } from '@microsoft/s
 import type { AppConfig, OrderInfo, RouteStep, TestResult, WorkStep } from './types/mes'
 import { getOrderByProcess, getRouteList, checkSingleMaterial, checkDuplicateBarcode, getCellData, pushToMes } from './services/mesApi'
 import ConfigModal from './components/ConfigModal.vue'
-import RouteTable from './components/RouteTable.vue'
+// import RouteTable from './components/RouteTable.vue'
 import ApiDetail from './components/ApiDetail.vue'
 import type { ApiRecord } from './components/ApiDetail.vue'
 import MaterialScanner from './components/MaterialScanner.vue'
@@ -208,7 +208,7 @@ const logs = ref<any[]>([])
 const plcLogs = ref<any[]>([]) // 专门存储 PLC 监控原始数据
 const apiRecords = ref<ApiRecord[]>([])
 const currentBarcodes = ref<string[]>([]) // 新增：存储读取到的电芯条码
-const activeTab = ref<'route' | 'api' | 'log' | 'material' | 'info' | 'plc' | 'recipe' | 'monitor' | 'finalCheck' | 'orderCache'>('route')
+const activeTab = ref<'api' | 'log' | 'material' | 'info' | 'plc' | 'recipe' | 'monitor' | 'finalCheck' | 'orderCache'>('material')
 const barcodeValidationResults = reactive<Record<string, { single: string, duplicate: string }>>({})
 const cellDetails = ref<Record<string, any>>({}) // 新增：存储电芯详细数据
 const cellDataLoading = ref(false)
@@ -1124,10 +1124,7 @@ async function handleFinalConfirm() {
 
       <section class="right-panel">
         <div class="tab-bar">
-          <button class="tab-btn" :class="{ active: activeTab === 'route' }" @click="activeTab = 'route'">
-            <span>📋</span> 工步列表
-            <span v-if="routeSteps.length" class="tab-count">{{ routeSteps.length }}</span>
-          </button>
+
           <button class="tab-btn" :class="{ active: activeTab === 'material' }" @click="activeTab = 'material'">
             <span>📦</span> 物料验证
           </button>
@@ -1161,10 +1158,7 @@ async function handleFinalConfirm() {
         </div>
 
         <div class="tab-content">
-          <div v-show="activeTab === 'route'" class="tab-pane">
-            <div v-if="routeError" class="error-box"><span>⚠️</span> {{ routeError }}</div>
-            <RouteTable :steps="routeSteps" :loading="routeLoading" />
-          </div>
+
           <div v-show="activeTab === 'orderCache'" class="tab-pane">
             <OrderCache 
               :orders="pendingOrders" 

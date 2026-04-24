@@ -394,7 +394,7 @@ async function fetchCellDetails() {
     const duration = Date.now() - t0
     addLog('success', `同步完成，成功更新 ${Object.keys(cellDetails.value).length} 条详细属性 (耗时: ${duration}ms)`)
     // 同步完成后切回获取信息页查看结果
-    activeTab.value = 'info'
+    activeTab.value = 'finalCheck'
   } catch (err: any) {
     addLog('error', `批量同步失败: ${err.message}`)
     rec.status = 'error'
@@ -1084,25 +1084,27 @@ async function handleFinalConfirm() {
             <div v-if="orderLoading" class="loading-spin" />
           </div>
           <div v-if="orderError" class="error-box"><span>⚠️</span> {{ orderError }}</div>
-          <div v-else-if="orderInfo" class="info-grid">
-            <div class="info-item">
-              <span class="info-label">工单号</span>
-              <span class="info-value highlight">{{ orderInfo.orderCode }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">工艺路线编码</span>
-              <span class="info-value mono">{{ orderInfo.route_No }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">工单编码</span>
-              <span class="info-value mono highlight-sn">{{ orderInfo?.code || productCode || '等待获取...' }}</span>
-            </div>
-            <template v-for="(val, key) in orderInfo" :key="key">
-              <div v-if="key !== 'orderCode' && key !== 'route_No'" class="info-item">
-                <span class="info-label">{{ key }}</span>
-                <span class="info-value">{{ val }}</span>
+          <div v-else-if="orderInfo" class="info-scroll-container">
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="info-label">工单号</span>
+                <span class="info-value highlight">{{ orderInfo.orderCode }}</span>
               </div>
-            </template>
+              <div class="info-item">
+                <span class="info-label">工艺路线编码</span>
+                <span class="info-value mono">{{ orderInfo.route_No }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">工单编码</span>
+                <span class="info-value mono highlight-sn">{{ orderInfo?.code || productCode || '等待获取...' }}</span>
+              </div>
+              <template v-for="(val, key) in orderInfo" :key="key">
+                <div v-if="key !== 'orderCode' && key !== 'route_No'" class="info-item">
+                  <span class="info-label">{{ key }}</span>
+                  <span class="info-value">{{ val }}</span>
+                </div>
+              </template>
+            </div>
           </div>
           <div v-else class="empty-hint">等待扫码查询...</div>
         </div>
@@ -1532,6 +1534,10 @@ async function handleFinalConfirm() {
 .scan-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .scan-hint { font-size: 11px; color: #37474f; margin: 6px 0 0 0; }
 kbd { background: rgba(100, 181, 246, 0.1); border: 1px solid rgba(100, 181, 246, 0.2); border-radius: 3px; padding: 1px 5px; font-size: 10px; color: #64b5f6; }
+.info-scroll-container { max-height: 200px; overflow-y: auto; padding-right: 4px; margin-top: 4px; }
+.info-scroll-container::-webkit-scrollbar { width: 4px; }
+.info-scroll-container::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.02); border-radius: 4px; }
+.info-scroll-container::-webkit-scrollbar-thumb { background: rgba(144, 202, 249, 0.3); border-radius: 4px; }
 .info-grid { display: flex; flex-direction: column; gap: 8px; }
 .info-item { display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; background: rgba(21, 101, 192, 0.06); border-radius: 6px; border: 1px solid rgba(100, 181, 246, 0.08); gap: 8px; }
 .info-label { font-size: 11px; color: #546e7a; flex-shrink: 0; }

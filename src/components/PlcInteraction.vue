@@ -51,10 +51,11 @@ async function configurePlc() {
 }
 
 async function handleRead() {
-  if (!readAddress.value) return
+  const addr = readAddress.value?.trim().replace(/\s/g, '')
+  if (!addr) return
   isReading.value = true
   try {
-    const res = await fetch(`${BACKEND_URL}/api/plc/read?address=${readAddress.value}&count=${readCount.value}`)
+    const res = await fetch(`${BACKEND_URL}/api/plc/read?address=${addr}&count=${readCount.value}`)
     if (res.ok) {
       const data = await res.json()
       let bytes: number[] = []
@@ -109,11 +110,12 @@ async function handleWrite() {
         val = false
     }
 
+    const addr = writeAddress.value?.trim().replace(/\s/g, '')
     const res = await fetch(`${BACKEND_URL}/api/plc/write`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        address: writeAddress.value,
+        address: addr,
         value: val
       })
     })

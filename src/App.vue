@@ -2,7 +2,7 @@
 import { ref, reactive, computed, onMounted, nextTick, onUnmounted, watch } from 'vue'
 import { HubConnectionBuilder, LogLevel, type HubConnection } from '@microsoft/signalr'
 import type { AppConfig, OrderInfo, RouteStep, TestResult, WorkStep } from './types/mes'
-import { getOrderByProcess, getRouteList, checkSingleMaterial, checkDuplicateBarcode, getCellData, pushToMes, createModuleCode } from './services/mesApi'
+import { getOrderByProcess, getRouteList, checkSingleMaterial, checkDuplicateBarcode, getCellData, pushToMes, createModuleCode, writePlcValue } from './services/mesApi'
 import ConfigModal from './components/ConfigModal.vue'
 // import RouteTable from './components/RouteTable.vue'
 import ApiDetail from './components/ApiDetail.vue'
@@ -42,6 +42,7 @@ async function fetchConfig() {
 
 const currentModuleSn = ref<number | null>(null)
 const currentLayers = ref<number | null>(null)
+const currentDbNum = ref<number | null>(null)
 
 async function initSignalR() {
   hubConnection = new HubConnectionBuilder()
@@ -83,6 +84,7 @@ async function initSignalR() {
   hubConnection.on('ReceivePlcTrigger', async (data: any) => {
     currentModuleSn.value = data.moduleSn || 0
     currentLayers.value = data.layers || 0
+    currentDbNum.value = data.dbNum || null
     addLog('info', `[PLC自动触发] 收到 ${data.side} 堆叠完成信号 (DB${data.dbNum})，序号: ${data.moduleSn}, 层数: ${data.layers}`);
     
     // 1. 批量读取条码逻辑
@@ -674,13 +676,23 @@ async function simulateBarcodeRead() {
   addLog('info', '正在自动从 PLC 采集条码矩阵数据...')
   
   try {
-    const res = await fetch(`${BACKEND_URL}/api/plc/read-barcodes`)
+    const res = await fetch(`${BACKEND_URL}/api/plc/read-barcodes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        layers: currentLayers.value || config.value.cellLayers || 1,
+        barcodeLength: config.value.cellBarcodeLength || 24,
+        col1Addr: config.value.col1StartAddr,
+        col2Addr: config.value.col2StartAddr,
+        col3Addr: config.value.col3StartAddr,
+        dbNum: currentDbNum.value || config.value.plcAStackDbNum
+      })
+    })
     if (res.ok) {
        const result = await res.json()
        if (result.barcodes && result.barcodes.length > 0) {
          currentBarcodes.value = result.barcodes
          addLog('success', `成功读取 ${result.barcodes.length} 个条码，开始自动校验...`)
-         // 这里会自动触发 watch(isMatrixFullyValidated) 逻辑，校验完成后会自动跳到 info 界面
        }
     }
   } catch (err) {
@@ -957,6 +969,57 @@ async function fetchRouteList(routeCode: string, targetTab = 'material') {
   } finally { routeLoading.value = false }
 }
 
+/** 手动判定合格并触发提交 */
+async function setOK() {
+  if (testResult.value !== 'IDLE') return
+  testResult.value = 'OK'
+  resultMessage.value = '手动判定合格'
+  addLog('success', '操作员手动判定: OK')
+  
+  // 额外动作：发送 PLC OK 信号
+  const targetDb = currentDbNum.value || config.value.plcAStackDbNum
+  if (config.value.plcOkAddr && targetDb) {
+    // 正则判断：是否以 DB + 数字 + 点 开头 (如 DB1590.)
+    const isFullAddr = /^DB\d+\./i.test(config.value.plcOkAddr)
+    const fullAddr = isFullAddr
+      ? config.value.plcOkAddr
+      : `DB${targetDb}.${config.value.plcOkAddr}`
+    try {
+      await writePlcValue({ address: fullAddr, value: 1 })
+      addLog('success', `PLC OK 信号已发送: ${fullAddr}`)
+    } catch (e) {
+      addLog('error', `PLC OK 信号发送失败: ${e}`)
+    }
+  }
+  
+  handleFinalConfirm()
+}
+
+/** 手动判定不合格并触发提交 */
+async function setNG() {
+  if (testResult.value !== 'IDLE') return
+  testResult.value = 'NG'
+  resultMessage.value = '手动判定不合格'
+  addLog('warn', '操作员手动判定: NG')
+
+  // 额外动作：发送 PLC NG 信号
+  const targetDb = currentDbNum.value || config.value.plcAStackDbNum
+  if (config.value.plcNgAddr && targetDb) {
+    const isFullAddr = /^DB\d+\./i.test(config.value.plcNgAddr)
+    const fullAddr = isFullAddr
+      ? config.value.plcNgAddr
+      : `DB${targetDb}.${config.value.plcNgAddr}`
+    try {
+      await writePlcValue({ address: fullAddr, value: 1 })
+      addLog('error', `PLC NG 信号已发送: ${fullAddr}`)
+    } catch (e) {
+      addLog('error', `PLC NG 信号发送失败: ${e}`)
+    }
+  }
+
+  handleFinalConfirm()
+}
+
 
 
 async function handleFinalConfirm() {
@@ -1112,6 +1175,54 @@ async function handleFinalConfirm() {
     
     testResult.value = finalStatus
     resultMessage.value = finalMsg
+
+    // ================ 第四步：将模块码写回 PLC ================
+    const targetDb = currentDbNum.value || config.value.plcAStackDbNum 
+    const startAddrStr = config.value.plcModuleCodeWriteAddress || 'DBB2'
+
+    if (finalModuleCode && targetDb) {
+      const fullAddr = startAddrStr.toUpperCase().startsWith('DB') && startAddrStr.includes('.') 
+        ? startAddrStr 
+        : `DB${targetDb}.${startAddrStr}`
+
+      // 严格按照用户最新指令：西门子标准字符串格式 (26 字节)
+      // 第 1 字节 (DBB2) = 最大长度 24, 第 2 字节 (DBB3) = 实际长度 24, 后续为 24 位 ASCII
+      const stringData = Array.from(finalModuleCode.padEnd(24, ' ')).slice(0, 24).map(c => c.charCodeAt(0))
+      const bytes = [24, 24, ...stringData] // 总计 26 字节
+
+      addLog('info', `准备按西门子 String 格式回写 PLC: 地址: ${fullAddr}, 内容长度: 24, 总字节: 26`)
+      try {
+        const writeRes = await writePlcValue({
+          address: fullAddr,
+          value: bytes 
+        })
+        addLog('success', `模块码已成功回写至 ${fullAddr}: ${finalModuleCode}`)
+      } catch (writeErr: any) {
+        addLog('error', `模块码回写失败: ${writeErr.message}`)
+        // 新增：直接弹窗显示原因，防止日志被刷掉
+        alert(`PLC 回写失败！详细原因: ${writeErr.message}\n请检查后端控制台或联系管理员检查 DB 块权限。`)
+      }
+    } else {
+      addLog('warn', `跳过 PLC 回写: 缺少参数 (码:${!!finalModuleCode}, DB:${targetDb})`)
+    }
+
+    // ================ 第五步：发送最终判定信号 (OK/NG) ================
+    const baseSignalAddr = finalStatus === 'OK' ? config.value.plcOkAddr : config.value.plcNgAddr
+    if (baseSignalAddr && targetDb) {
+      // 正则判断：是否以 DB + 数字 + 点 开头 (如 DB1590.)
+      const isFullAddr = /^DB\d+\./i.test(baseSignalAddr)
+      const fullSignalAddr = isFullAddr
+        ? baseSignalAddr
+        : `DB${targetDb}.${baseSignalAddr}`
+
+      addLog('info', `准备发送最终判定信号 [${finalStatus}] 至: ${fullSignalAddr}`)
+      try {
+        await writePlcValue({ address: fullSignalAddr, value: 1 })
+        addLog('success', `判定信号 [${finalStatus}] 已成功发送至 PLC`)
+      } catch (sigErr: any) {
+        addLog('error', `判定信号发送失败: ${sigErr.message}`)
+      }
+    }
 
   } catch (err: any) {
     addLog('error', `操作失败: ${err.message}`)

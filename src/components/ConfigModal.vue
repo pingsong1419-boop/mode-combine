@@ -190,6 +190,14 @@ function handleCancel() {
                 <label>电芯码长度</label>
                 <input v-model.number="form.cellBarcodeLength" type="number" class="input-field" placeholder="输入整数" />
               </div>
+              <div class="field-group">
+                <label>判定 OK 信号地址</label>
+                <input v-model="form.plcOkAddr" type="text" class="input-field" placeholder="例如: DB1590.DBX170.0" />
+              </div>
+              <div class="field-group">
+                <label>判定 NG 信号地址</label>
+                <input v-model="form.plcNgAddr" type="text" class="input-field" placeholder="例如: DB1590.DBX170.1" />
+              </div>
             </div>
           </div>
 

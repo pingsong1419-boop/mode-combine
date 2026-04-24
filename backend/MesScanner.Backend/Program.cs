@@ -43,16 +43,15 @@ app.MapPost("/api/plc/config", (PlcRequest req, PlcService service) => {
     Console.WriteLine("--------------------------------------------------");
     Console.WriteLine($"[API] 收到 PLC 配置更新请求:");
     Console.WriteLine($"      IP: {req.Ip}");
-    Console.WriteLine($"      A面触发地址: {req.AStackAddr}");
-    Console.WriteLine($"      B面触发地址: {req.BStackAddr}");
-    Console.WriteLine($"      模组序号地址: {req.ModuleSnAddr}"); // 关键检查项
-    Console.WriteLine($"      电芯层数地址: {req.CellLayerAddr}");
+    Console.WriteLine($"      OK信号地址: {req.PlcOkAddr}");
+    Console.WriteLine($"      NG信号地址: {req.PlcNgAddr}");
     Console.WriteLine("--------------------------------------------------");
 
     service.SetConnection(req.Ip, req.CpuType, req.Rack, req.Slot, req.HeartbeatAddress, 
         req.AStackAddr, req.BStackAddr, req.CellLayerAddr, req.ModuleSnAddr,
         req.Col1StartAddr, req.Col2StartAddr, req.Col3StartAddr,
-        req.AStackDbNum, req.BStackDbNum);
+        req.AStackDbNum, req.BStackDbNum,
+        req.PlcOkAddr, req.PlcNgAddr);
     return Results.Ok(new { message = "PLC Config Updated" });
 });
 
@@ -81,8 +80,8 @@ app.MapPost("/api/plc/read-barcodes", async (HttpContext context, PlcService ser
 });
 
 app.MapPost("/api/plc/write", async (PlcWriteRequest req, PlcService service) => {
-    var success = await service.WriteValueAsync(req.Address, req.Value);
-    if (!success) return Results.BadRequest("Write Failed");
+    var (success, error) = await service.WriteValueAsync(req.Address, req.Value);
+    if (!success) return Results.BadRequest(new { message = error });
     return Results.Ok(new { message = "Write Success", address = req.Address, value = req.Value });
 });
 

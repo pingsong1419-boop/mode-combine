@@ -16,6 +16,8 @@ public class PlcRequest
     public string Col3StartAddr { get; set; } = "";
     public int AStackDbNum { get; set; } = 1590;
     public int BStackDbNum { get; set; } = 1591;
+    public string PlcOkAddr { get; set; } = "DB1590.DBX170.0";
+    public string PlcNgAddr { get; set; } = "DB1590.DBX170.1";
 }
 
 public class PlcReadRequest

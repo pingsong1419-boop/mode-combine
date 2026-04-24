@@ -29,6 +29,9 @@ public class PlcService : BackgroundService
     private string _col3StartAddr = "";       // 新增：3列起始
     private int _aStackDbNum = 1590;          // 新增：A面数据块编号
     private int _bStackDbNum = 1591;          // 新增：B面数据块编号
+    private string _plcOkAddr = "DB1590.DBX170.0"; // 新增：OK信号
+    private string _plcNgAddr = "DB1590.DBX170.1"; // 新增：NG信号
+    private int _currentActiveDbNum = 0;           // 新增：当前活跃的 A/B 面 DB 号
 
     public PlcService(ILogger<PlcService> logger, IHubContext<TorqueHub> hubContext)
     {
@@ -41,7 +44,8 @@ public class PlcService : BackgroundService
     public void SetConnection(string ip, string cpuType, short rack, short slot, string heartbeatAddress, 
         string aStackAddr = "", string bStackAddr = "", string cellLayerAddr = "", string moduleSnAddr = "",
         string col1 = "", string col2 = "", string col3 = "",
-        int aDb = 1590, int bDb = 1591)
+        int aDb = 1590, int bDb = 1591,
+        string okAddr = "DB1590.DBX170.0", string ngAddr = "DB1590.DBX170.1")
     {
         _ip = ip;
         _cpu = cpuType == "S71500" ? CpuType.S71500 : (cpuType == "S71200" ? CpuType.S71200 : CpuType.S7300);
@@ -57,7 +61,10 @@ public class PlcService : BackgroundService
         _col3StartAddr = col3;
         _aStackDbNum = aDb;
         _bStackDbNum = bDb;
-        Console.WriteLine($"[PLC Config] A={_aStackFinishAddress}, B={_bStackFinishAddress}, SN_ADDR={_moduleSnAddress}, ADB={_aStackDbNum}, BDB={_bStackDbNum}");
+        _plcOkAddr = okAddr;
+        _plcNgAddr = ngAddr;
+        
+        Console.WriteLine($"[PLC Config] A={_aStackFinishAddress}, B={_bStackFinishAddress}, OK={_plcOkAddr}, NG={_plcNgAddr}");
         
         if (Enum.TryParse<CpuType>(cpuType, true, out var cpu))
         {
@@ -180,51 +187,49 @@ public class PlcService : BackgroundService
         return address;
     }
 
-    public async Task<object?> ReadValueAsync(string address, int count = 1)
-    {
-        Console.WriteLine($"[PlcService] Read: {address}, Count: {count}");
-        if (_plc == null) return null;
-        try
+        public async Task<object?> ReadValueAsync(string address, int count = 1)
         {
-            object? result;
-            if (count > 1)
+            if (string.IsNullOrEmpty(address)) return null;
+            string cleanAddr = address.Replace(" ", "").Trim().ToUpper();
+            
+            if (_plc == null || !_isConnected) {
+                _logger.LogWarning("[PLC Read] 无法读取，PLC 未连接。地址: {Addr}", cleanAddr);
+                return null;
+            }
+
+            try
             {
-                // 解析地址以进行字节数组读取 (简单逻辑：仅支持 DB 块)
-                // 期望格式如 "DB1.DBB0"
-                if (address.ToUpper().StartsWith("DB"))
+                object? result;
+                if (count > 1)
                 {
-                    var parts = address.Split('.');
-                    int dbNum = int.Parse(parts[0].Substring(2));
-                    int start = 0;
-                    if (parts[1].StartsWith("DBB")) start = int.Parse(parts[1].Substring(3));
-                    else if (parts[1].StartsWith("DBW")) start = int.Parse(parts[1].Substring(3));
-                    else if (parts[1].StartsWith("DBD")) start = int.Parse(parts[1].Substring(3));
-                    
-                    result = await Task.Run(() => _plc.ReadBytes(DataType.DataBlock, dbNum, start, count));
+                    var match = System.Text.RegularExpressions.Regex.Match(cleanAddr, @"DB(\d+)\D+(\d+)");
+                    if (match.Success)
+                    {
+                        int dbNum = int.Parse(match.Groups[1].Value);
+                        int start = int.Parse(match.Groups[2].Value);
+                        result = await Task.Run(() => _plc.ReadBytes(DataType.DataBlock, dbNum, start, count));
+                    }
+                    else
+                    {
+                        result = await Task.Run(() => _plc.Read(cleanAddr));
+                    }
                 }
                 else
                 {
-                    throw new Exception("批量读取目前仅支持 DB 块 (如 DB1.DBB0)");
+                    result = await Task.Run(() => _plc.Read(cleanAddr));
                 }
-            }
-            else
-            {
-                result = await Task.Run(() => _plc.Read(address));
-            }
 
-            // 记录到监控通道
-            string valStr = result is byte[] bytes ? BitConverter.ToString(bytes) : (result?.ToString() ?? "NULL");
-            await LogToMonitor("READ", address + (count > 1 ? $"[{count}]" : ""), valStr, "SUCCESS");
-            return result;
+                string valStr = result is byte[] bytes ? BitConverter.ToString(bytes) : (result?.ToString() ?? "NULL");
+                await LogToMonitor("READ", cleanAddr + (count > 1 ? $"[{count}]" : ""), valStr, "SUCCESS");
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[PLC Read Error] Addr: {Addr}, Msg: {Msg}", cleanAddr, ex.Message);
+                await LogToFrontend("error", $"[PLC读取异常] 地址: {cleanAddr}, 原因: {ex.Message}");
+                return null;
+            }
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[PLC Read] ✘ ERROR: Address: {address}, Msg: {ex.Message}");
-            await LogToFrontend("error", $"[PLC读取失败] 地址: {address}, 原因: {ex.Message}");
-            _logger.LogError("PLC 读取错误: {Msg}", ex.Message);
-            return null;
-        }
-    }
 
     public async Task<List<string>> ReadCellBarcodesAsync(int layers, int barcodeLength, string col1Addr, string col2Addr, string col3Addr, int overrideDbNum = 0)
     {
@@ -277,59 +282,97 @@ public class PlcService : BackgroundService
         return allBarcodes;
     }
 
-    public async Task<bool> WriteValueAsync(string address, object value)
+    private static readonly SemaphoreSlim _writeLock = new SemaphoreSlim(1, 1);
+
+    public async Task<(bool success, string error)> WriteValueAsync(string address, object value)
     {
-        if (!_isConnected || _plc == null) return false;
+        if (string.IsNullOrEmpty(address)) return (false, "地址为空");
+        
+        await _writeLock.WaitAsync();
         try
         {
-            // 1. 基础 JSON 拆箱
-            if (value is JsonElement element)
+            string cleanAddr = address.Replace(" ", "").ToUpper();
+            
+            // 【双重保险】自动补全 DB 编号
+            // 逻辑：如果以 DB 开头，但不是以 "DB<数字>." 开头 (即缺少数据块编号)，则自动补齐
+            bool isMissingDbNum = cleanAddr.StartsWith("DB") && !System.Text.RegularExpressions.Regex.IsMatch(cleanAddr, @"^DB\d+\.");
+            
+            if (isMissingDbNum && _currentActiveDbNum > 0)
             {
-                value = element.ValueKind switch
+                cleanAddr = $"DB{_currentActiveDbNum}.{cleanAddr}";
+                _logger.LogInformation("[Auto-Fix] 地址自动补齐 DB 编号: {Old} -> {New}", address, cleanAddr);
+            }
+            
+            // 1. 处理 JsonElement 的基础解包
+            if (value is JsonElement je)
+            {
+                if (je.ValueKind == JsonValueKind.Array)
                 {
-                    JsonValueKind.True => true,
-                    JsonValueKind.False => false,
-                    JsonValueKind.Number => element.TryGetInt32(out int i) ? i : (object)element.GetDouble(),
-                    JsonValueKind.String => element.GetString() ?? "",
-                    _ => value
-                };
+                    var list = new List<byte>();
+                    foreach (var item in je.EnumerateArray()) list.Add((byte)item.GetInt32());
+                    value = list.ToArray();
+                }
+                else
+                {
+                    value = je.ValueKind switch {
+                        JsonValueKind.Number => je.GetDouble(),
+                        JsonValueKind.True => true,
+                        JsonValueKind.False => false,
+                        JsonValueKind.String => je.GetString(),
+                        _ => value
+                    };
+                }
             }
 
-            // 2. 根据地址前缀进行精确类型转换 (S7.Net 对此极其敏感)
-            string addrUpper = address.ToUpper();
-            if (addrUpper.Contains("DBX") || addrUpper.Contains(".X"))
+            // 2. 核心：根据地址类型自动转换 Value 的数据类型
+            // 如果是写入位 (DBX)
+            if (cleanAddr.Contains("DBX") || cleanAddr.Contains(".X"))
             {
-                value = Convert.ToBoolean(value);
+                string sVal = value?.ToString() ?? "0";
+                value = (sVal == "1" || sVal.ToLower() == "true");
             }
-            else if (addrUpper.Contains("DBB") || addrUpper.Contains(".B"))
+            // 如果是写入字节 (DBB) 且不是数组
+            else if ((cleanAddr.Contains("DBB") || cleanAddr.Contains(".B")) && value is not byte[])
             {
                 value = Convert.ToByte(value);
             }
-            else if (addrUpper.Contains("DBW") || addrUpper.Contains(".W"))
+            // 如果是写入整数 (DBW)
+            else if (cleanAddr.Contains("DBW") || cleanAddr.Contains(".W"))
             {
                 value = Convert.ToUInt16(value);
             }
-            else if (addrUpper.Contains("DBD") || addrUpper.Contains(".D"))
-            {
-                // 如果是双字，需要区分是 DInt/DWord 还是 Real(浮点)
-                // 这里简单通过是否为 double/float 来判定，或强制转为 uint
-                if (value is double d) value = (float)d;
-                else value = Convert.ToUInt32(value);
-            }
 
-            Console.WriteLine($"[PLC Write] {DateTime.Now:HH:mm:ss.fff} -> Address: {address}, Value: {value}, Type: {value.GetType().Name}");
-            _logger.LogInformation("[PLC Write] Address: {Addr}, Value: {Val}, Type: {Type}", address, value, value.GetType().Name);
-            await Task.Run(() => _plc.Write(address, value));
-            await LogToMonitor("WRITE", address, value.ToString() ?? "", "SUCCESS");
-            return true;
+            // 3. 强制检查连接
+            if (_plc == null || !_plc.IsConnected) await ConnectAsync();
+
+            // 4. 执行写入
+            if (value is byte[] bytesToWrite)
+            {
+                var matches = System.Text.RegularExpressions.Regex.Matches(cleanAddr, @"\d+");
+                int dbNum = int.Parse(matches[0].Value);
+                int start = int.Parse(matches[1].Value);
+                await Task.Run(() => _plc.WriteBytes(DataType.DataBlock, dbNum, start, bytesToWrite));
+            }
+            else
+            {
+                await Task.Run(() => _plc.Write(cleanAddr, value));
+            }
+            
+            await LogToMonitor("WRITE", cleanAddr, value is byte[] b ? $"BYTES[{b.Length}]" : (value.ToString() ?? ""), "SUCCESS");
+            return (true, "SUCCESS");
         }
         catch (Exception ex)
         {
-            await LogToMonitor("WRITE", address, value?.ToString() ?? "", "ERROR");
-            _logger.LogError("PLC 写入错误: {Msg}", ex.Message);
-            return false;
+            _logger.LogError(ex, "[PLC Write Error] " + ex.Message);
+            await LogToMonitor("WRITE", address, "ERROR: " + ex.Message, "ERROR");
+            return (false, "写入异常: " + ex.Message);
+        }
+        finally
+        {
+            _writeLock.Release();
         }
     }
+
 
     private async Task LogToMonitor(string action, string address, string value, string status)
     {
@@ -380,7 +423,8 @@ public class PlcService : BackgroundService
                                 moduleSn = SafeConvertToInt(snVal);
                                 _logger.LogInformation("[PLC] A面模组序号原始值: {Raw}, 转换后: {Val}, 地址: {Addr}", snVal, moduleSn, snAddrA);
                             }
-                            Console.WriteLine($"[Trigger] A面触发, DB: {dbNum}, 层数: {layers}, 模组序号: {moduleSn}");
+                             Console.WriteLine($"[Trigger] A面触发, DB: {dbNum}, 层数: {layers}, 模组序号: {moduleSn}");
+                            _currentActiveDbNum = dbNum; // 记录当前活跃 DB
                             await HandlePlcTrigger("A面", layers, moduleSn, dbNum);
                             await WriteValueAsync(_aStackFinishAddress, false); // 立即复位
                         }
@@ -414,6 +458,7 @@ public class PlcService : BackgroundService
                                 _logger.LogWarning("[PLC] ⚠ B面触发成功，但 _moduleSnAddress 为空");
                             }
                             Console.WriteLine($"[Trigger] B面触发, DB: {dbNum}, 层数: {layers}, 模组序号: {moduleSn}");
+                            _currentActiveDbNum = dbNum; // 记录当前活跃 DB
                             await HandlePlcTrigger("B面", layers, moduleSn, dbNum);
                             await WriteValueAsync(_bStackFinishAddress, false); // 立即复位
                         }

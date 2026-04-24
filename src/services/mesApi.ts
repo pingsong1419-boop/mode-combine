@@ -112,3 +112,18 @@ export async function pushToMes(apiUrl: string, body: object): Promise<any> {
 export async function createModuleCode(apiUrl: string, body: object): Promise<any> {
   return postRequest<any>(apiUrl, body)
 }
+
+/**
+ * 步骤八：写入 PLC 数据
+ * @param body { dbNum: number, address: string, value: any }
+ */
+export async function writePlcValue(body: object): Promise<any> {
+  const url = `${BACKEND_URL}/api/plc/write`
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })
+  if (!response.ok) throw new Error('写入 PLC 失败')
+  return response.json()
+}

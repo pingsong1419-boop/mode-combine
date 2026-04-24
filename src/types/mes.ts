@@ -67,6 +67,11 @@ export interface AppConfig {
   /** 电芯码长度 (整型) */
   cellBarcodeLength?: number
   
+  /** 判定 OK 信号地址 */
+  plcOkAddr?: string
+  /** 判定 NG 信号地址 */
+  plcNgAddr?: string
+  
   /** 管理员设置 */
   adminUsername?: string
   adminPassword?: string

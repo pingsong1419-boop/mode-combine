@@ -1,7 +1,7 @@
 /**
  * 后端服务基础配置
  */
-export const BACKEND_URL = 'http://localhost:5246';
+export const BACKEND_URL = 'http://localhost:5247';
 export const SIGNALR_HUB_URL = `${BACKEND_URL}/torqueHub`;
 
 /**

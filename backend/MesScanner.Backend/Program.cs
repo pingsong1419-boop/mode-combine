@@ -183,4 +183,4 @@ app.MapPost("/api/recipe/config", async (HttpContext context) => {
     }
 });
 
-app.Run("http://localhost:5246");
+app.Run("http://localhost:5247");

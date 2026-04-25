@@ -433,92 +433,115 @@ function addLog(level: any, msg: string) {
 
 // ==================== 终校验逻辑 ====================
 const qualityCheckResults = computed(() => {
-  // 获取所有有效且已同步详情的条码
-  const barcodes = currentBarcodes.value.filter(c => c && !c.startsWith('999') && !c.startsWith('000') && cellDetails.value[c])
-  if (barcodes.length === 0 || !routeSteps.value || routeSteps.value.length === 0) return []
+  // 1. 定义一份铁打的、基础的 5 项模组级检测框架（提供空白占位兜底）
+  const fallbackTemplates = [
+    { paramName: "模组模块容量差", technicsParamCode: "DXPZ0005" },
+    { paramName: "模组模块内电芯批次明细", technicsParamCode: "DXPZ0002" },
+    { paramName: "模组模块容量和最大值", technicsParamCode: "DXPZ0004" },
+    { paramName: "模组模块内电芯档位明细", technicsParamCode: "DXPZ0003" },
+    { paramName: "模组模块容量和最小值", technicsParamCode: "DXPZ0016" }
+  ]
 
-  // 1. 提取工步中的所有质量参数模板
+  // 提取工步中的所有质量参数模板（带唯一性消重，防止多工步重复注册产生冗余）
+  const rawTemplates: any[] = []
+  if (Array.isArray(routeSteps.value)) {
+    routeSteps.value.forEach((step: any) => {
+      if (Array.isArray(step.workSeqParamList)) rawTemplates.push(...step.workSeqParamList)
+      if (Array.isArray(step.workStepList)) {
+        step.workStepList.forEach((subStep: any) => {
+          if (Array.isArray(subStep.workStepParamList)) rawTemplates.push(...subStep.workStepParamList)
+        })
+      }
+    })
+  }
+
   const paramTemplates: any[] = []
-  routeSteps.value.forEach((step: any) => {
-    if (Array.isArray(step.workSeqParamList)) paramTemplates.push(...step.workSeqParamList)
-    if (Array.isArray(step.workStepList)) {
-      step.workStepList.forEach((subStep: any) => {
-        if (Array.isArray(subStep.workStepParamList)) paramTemplates.push(...subStep.workStepParamList)
-      })
+  const seenCodes = new Set<string>()
+  rawTemplates.forEach(p => {
+    if (!p) return
+    const key = String(p.technicsParamCode || p.technicsParamName || p.paramName || '').trim()
+    if (key && !seenCodes.has(key)) {
+      seenCodes.add(key)
+      paramTemplates.push(p)
     }
   })
+
+  // 核心：若工艺路线为空（或重启后未拉取），强制使用预设的基础结构渲染出表格骨架
+  const finalTemplates = paramTemplates.length > 0 ? paramTemplates : fallbackTemplates
 
   // 2. 准备模组全局数据
   const actualMax = moduleMaxCapacitySum.value === '-' ? null : Number(moduleMaxCapacitySum.value)
   const actualMin = moduleMinCapacitySum.value === '-' ? null : Number(moduleMinCapacitySum.value)
   const actualDiff = moduleCapacityDiff.value === '-' ? null : Number(moduleCapacityDiff.value)
 
-  // 3. 为每个条码生成一组校验项
-  const results: any[] = []
-  
-  barcodes.forEach((barcode, bIdx) => {
-    const detail = cellDetails.value[barcode]
-    
-    paramTemplates.forEach((p, pIdx) => {
-      let actualValue: any = '-'
-      let result: 'PASS' | 'FAIL' = 'FAIL'
-      const name = p.paramName || ''
-      
-      // 根据参数名识别并填充实际值
-      if (name.includes('批次明细')) {
-        actualValue = detail.batch || '-'
-        if (p.maxQualityValue && actualValue !== '-') {
-          const allowed = p.maxQualityValue.toString().split(/[;；,，]/).map((v: string) => v.trim())
-          result = allowed.includes(actualValue) ? 'PASS' : 'FAIL'
-        } else {
-          result = 'FAIL'
-        }
-      } else if (name.includes('容量和最大值')) {
-        actualValue = actualMax ?? '-'
-        if (actualMax !== null) {
-          const minLimit = p.minQualityValue !== null && p.minQualityValue !== '' ? Number(p.minQualityValue) : -Infinity
-          const maxLimit = p.maxQualityValue !== null && p.maxQualityValue !== '' ? Number(p.maxQualityValue) : Infinity
-          result = (actualMax >= minLimit && actualMax <= maxLimit) ? 'PASS' : 'FAIL'
-        } else {
-          result = 'FAIL'
-        }
-      } else if (name.includes('容量和最小值')) {
-        actualValue = actualMin ?? '-'
-        if (actualMin !== null) {
-          const minLimit = p.minQualityValue !== null && p.minQualityValue !== '' ? Number(p.minQualityValue) : -Infinity
-          const maxLimit = p.maxQualityValue !== null && p.maxQualityValue !== '' ? Number(p.maxQualityValue) : Infinity
-          result = (actualMin >= minLimit && actualMin <= maxLimit) ? 'PASS' : 'FAIL'
-        } else {
-          result = 'FAIL'
-        }
-      } else if (name.includes('档位明细')) {
-        actualValue = detail.grade || '-'
-        if (p.maxQualityValue && actualValue !== '-') {
-          const allowed = p.maxQualityValue.toString().split(/[;；,，]/).map((v: string) => v.trim())
-          result = allowed.includes(actualValue) ? 'PASS' : 'FAIL'
-        } else {
-          result = 'FAIL'
-        }
-      } else if (name.includes('容量差')) {
-        actualValue = actualDiff ?? '-'
-        if (actualDiff !== null) {
-          const minLimit = p.minQualityValue !== null && p.minQualityValue !== '' ? Number(p.minQualityValue) : -Infinity
-          const maxLimit = p.maxQualityValue !== null && p.maxQualityValue !== '' ? Number(p.maxQualityValue) : Infinity
-          result = (actualDiff >= minLimit && actualDiff <= maxLimit) ? 'PASS' : 'FAIL'
-        } else {
-          result = 'FAIL'
-        }
-      }
+  // 汇总批次明细、档位明细
+  const cellDetailsList = Object.values(cellDetails.value) as any[]
+  const allBatches = Array.from(new Set(cellDetailsList.map(d => d.batch).filter(Boolean))).join(';')
+  const allGrades = Array.from(new Set(cellDetailsList.map(d => d.grade).filter(Boolean))).join(';')
 
-      results.push({
-        barcode,
-        barcodeIndex: bIdx + 1,
-        isFirstParam: pIdx === 0,
-        paramCount: paramTemplates.length,
-        ...p,
-        actualValue,
-        result
-      })
+  // 3. 构造输出列表
+  const results: any[] = []
+  const finalModuleCode = generatedModuleCode.value || "当前批次"
+
+  finalTemplates.forEach((p, pIdx) => {
+    let actualValue: any = '-'
+    let result: 'PASS' | 'FAIL' = 'FAIL'
+    const name = p.paramName || ''
+    
+    // 根据参数名识别并填充实际值
+    if (name.includes('批次明细')) {
+      actualValue = allBatches || '-'
+      if (p.maxQualityValue && actualValue !== '-') {
+        const allowed = p.maxQualityValue.toString().split(/[;；,，]/).map((v: string) => v.trim())
+        result = allowed.includes(actualValue) ? 'PASS' : 'FAIL'
+      } else {
+        result = 'FAIL'
+      }
+    } else if (name.includes('容量和最大值')) {
+      actualValue = actualMax ?? '-'
+      if (actualMax !== null) {
+        const minLimit = p.minQualityValue !== null && p.minQualityValue !== '' ? Number(p.minQualityValue) : -Infinity
+        const maxLimit = p.maxQualityValue !== null && p.maxQualityValue !== '' ? Number(p.maxQualityValue) : Infinity
+        result = (actualMax >= minLimit && actualMax <= maxLimit) ? 'PASS' : 'FAIL'
+      } else {
+        result = 'FAIL'
+      }
+    } else if (name.includes('容量和最小值')) {
+      actualValue = actualMin ?? '-'
+      if (actualMin !== null) {
+        const minLimit = p.minQualityValue !== null && p.minQualityValue !== '' ? Number(p.minQualityValue) : -Infinity
+        const maxLimit = p.maxQualityValue !== null && p.maxQualityValue !== '' ? Number(p.maxQualityValue) : Infinity
+        result = (actualMin >= minLimit && actualMin <= maxLimit) ? 'PASS' : 'FAIL'
+      } else {
+        result = 'FAIL'
+      }
+    } else if (name.includes('档位明细')) {
+      actualValue = allGrades || '-'
+      if (p.maxQualityValue && actualValue !== '-') {
+        const allowed = p.maxQualityValue.toString().split(/[;；,，]/).map((v: string) => v.trim())
+        result = allowed.includes(actualValue) ? 'PASS' : 'FAIL'
+      } else {
+        result = 'FAIL'
+      }
+    } else if (name.includes('容量差')) {
+      actualValue = actualDiff ?? '-'
+      if (actualDiff !== null) {
+        const minLimit = p.minQualityValue !== null && p.minQualityValue !== '' ? Number(p.minQualityValue) : -Infinity
+        const maxLimit = p.maxQualityValue !== null && p.maxQualityValue !== '' ? Number(p.maxQualityValue) : Infinity
+        result = (actualDiff >= minLimit && actualDiff <= maxLimit) ? 'PASS' : 'FAIL'
+      } else {
+        result = 'FAIL'
+      }
+    }
+
+    results.push({
+      barcode: finalModuleCode,
+      barcodeIndex: 1,
+      isFirstParam: pIdx === 0,
+      paramCount: finalTemplates.length,
+      ...p,
+      actualValue,
+      result
     })
   })
   

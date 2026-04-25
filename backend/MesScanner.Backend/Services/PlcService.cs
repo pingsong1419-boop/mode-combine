@@ -41,7 +41,7 @@ public class PlcService : BackgroundService
 
     public bool IsConnected => _isConnected;
 
-    public void SetConnection(string ip, string cpuType, short rack, short slot, string heartbeatAddress, 
+    public void SetConnection(string ip, string cpuType, short rack, short slot, string heartbeatAddress,
         string aStackAddr = "", string bStackAddr = "", string cellLayerAddr = "", string moduleSnAddr = "",
         string col1 = "", string col2 = "", string col3 = "",
         int aDb = 1590, int bDb = 1591,
@@ -63,14 +63,14 @@ public class PlcService : BackgroundService
         _bStackDbNum = bDb;
         _plcOkAddr = okAddr;
         _plcNgAddr = ngAddr;
-        
+
         Console.WriteLine($"[PLC Config] A={_aStackFinishAddress}, B={_bStackFinishAddress}, OK={_plcOkAddr}, NG={_plcNgAddr}");
-        
+
         if (Enum.TryParse<CpuType>(cpuType, true, out var cpu))
         {
             _cpu = cpu;
         }
-        
+
         // 重新连接逻辑
         _isConnected = false;
         _plc?.Close();
@@ -109,13 +109,14 @@ public class PlcService : BackgroundService
                     // 即使主标志位是 false，只要 PLC 实例底层显示已连接，我们就尝试读取
                     var val = await ReadValueAsync(_heartbeatAddress);
                     bool currentStatus = (val != null);
-                    
+
                     // 同步更新主连接状态
                     _isConnected = currentStatus;
 
                     // 1. 发送心跳包 (带上真实的位值)
-                    await _hubContext.Clients.All.SendAsync("ReceiveHeartbeat", new { 
-                        online = currentStatus, 
+                    await _hubContext.Clients.All.SendAsync("ReceiveHeartbeat", new
+                    {
+                        online = currentStatus,
                         time = DateTime.Now.ToString("HH:mm:ss"),
                         bitValue = val is bool b ? b : (val != null) // 如果是布尔值就取布尔，否则只要不为空就是 true
                     }, token);
@@ -142,7 +143,7 @@ public class PlcService : BackgroundService
         try
         {
             if (_plc == null) _plc = new Plc(_cpu, _ip, _rack, _slot);
-            
+
             await Task.Run(() => _plc.Open());
             _isConnected = _plc.IsConnected;
 
@@ -177,7 +178,7 @@ public class PlcService : BackgroundService
             }
             return address; // 非 DB 块地址 (如 M0.0) 不处理
         }
-        
+
         // 2. 如果不包含点且以 DB 开头，则认为是偏移量格式，如 "DBB1" -> "DB1590.DBB1"
         if (address.ToUpper().StartsWith("DB"))
         {
@@ -187,49 +188,50 @@ public class PlcService : BackgroundService
         return address;
     }
 
-        public async Task<object?> ReadValueAsync(string address, int count = 1)
-        {
-            if (string.IsNullOrEmpty(address)) return null;
-            string cleanAddr = address.Replace(" ", "").Trim().ToUpper();
-            
-            if (_plc == null || !_isConnected) {
-                _logger.LogWarning("[PLC Read] 无法读取，PLC 未连接。地址: {Addr}", cleanAddr);
-                return null;
-            }
+    public async Task<object?> ReadValueAsync(string address, int count = 1)
+    {
+        if (string.IsNullOrEmpty(address)) return null;
+        string cleanAddr = address.Replace(" ", "").Trim().ToUpper();
 
-            try
+        if (_plc == null || !_isConnected)
+        {
+            _logger.LogWarning("[PLC Read] 无法读取，PLC 未连接。地址: {Addr}", cleanAddr);
+            return null;
+        }
+
+        try
+        {
+            object? result;
+            if (count > 1)
             {
-                object? result;
-                if (count > 1)
+                var match = System.Text.RegularExpressions.Regex.Match(cleanAddr, @"DB(\d+)\D+(\d+)");
+                if (match.Success)
                 {
-                    var match = System.Text.RegularExpressions.Regex.Match(cleanAddr, @"DB(\d+)\D+(\d+)");
-                    if (match.Success)
-                    {
-                        int dbNum = int.Parse(match.Groups[1].Value);
-                        int start = int.Parse(match.Groups[2].Value);
-                        result = await Task.Run(() => _plc.ReadBytes(DataType.DataBlock, dbNum, start, count));
-                    }
-                    else
-                    {
-                        result = await Task.Run(() => _plc.Read(cleanAddr));
-                    }
+                    int dbNum = int.Parse(match.Groups[1].Value);
+                    int start = int.Parse(match.Groups[2].Value);
+                    result = await Task.Run(() => _plc.ReadBytes(DataType.DataBlock, dbNum, start, count));
                 }
                 else
                 {
                     result = await Task.Run(() => _plc.Read(cleanAddr));
                 }
-
-                string valStr = result is byte[] bytes ? BitConverter.ToString(bytes) : (result?.ToString() ?? "NULL");
-                await LogToMonitor("READ", cleanAddr + (count > 1 ? $"[{count}]" : ""), valStr, "SUCCESS");
-                return result;
             }
-            catch (Exception ex)
+            else
             {
-                _logger.LogError(ex, "[PLC Read Error] Addr: {Addr}, Msg: {Msg}", cleanAddr, ex.Message);
-                await LogToFrontend("error", $"[PLC读取异常] 地址: {cleanAddr}, 原因: {ex.Message}");
-                return null;
+                result = await Task.Run(() => _plc.Read(cleanAddr));
             }
+
+            string valStr = result is byte[] bytes ? BitConverter.ToString(bytes) : (result?.ToString() ?? "NULL");
+            await LogToMonitor("READ", cleanAddr + (count > 1 ? $"[{count}]" : ""), valStr, "SUCCESS");
+            return result;
         }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[PLC Read Error] Addr: {Addr}, Msg: {Msg}", cleanAddr, ex.Message);
+            await LogToFrontend("error", $"[PLC读取异常] 地址: {cleanAddr}, 原因: {ex.Message}");
+            return null;
+        }
+    }
 
     public async Task<List<string>> ReadCellBarcodesAsync(int layers, int barcodeLength, string col1Addr, string col2Addr, string col3Addr, int overrideDbNum = 0)
     {
@@ -255,20 +257,25 @@ public class PlcService : BackgroundService
                 // 支持 DBB, DBW, DBD, DBX 等多种格式，统一切掉非数字前缀
                 string offsetStr = System.Text.RegularExpressions.Regex.Replace(parts[1], @"[^\d]", "");
                 int start = int.Parse(offsetStr);
-                int totalBytesToRead = layers * 40;
+                // 【全局正则救场】放弃对物理步长的硬性猜测，直接一口气读足 1500 字节，顺序把合法的 24 位条码全数吸附出来
+                int totalBytesToRead = 1500;
 
-                // 一次性读取该列所有层的原始数据
-                Console.WriteLine($"[Batch Read] DB: {dbNum}, Start: {start}, Bytes: {totalBytesToRead}, Addr: {addr}");
+                Console.WriteLine($"[Global Regex Read] DB: {dbNum}, Start: {start}, Bytes: {totalBytesToRead}, Addr: {addr}");
                 byte[] rawData = await Task.Run(() => _plc.ReadBytes(DataType.DataBlock, dbNum, start, totalBytesToRead));
 
                 if (rawData != null)
                 {
+                    string rawStr = System.Text.Encoding.ASCII.GetString(rawData).ToUpper();
+                    // 匹配物理内存池中所有符合 03HCB 开头、且长度为 24 位的电芯条码
+                    var matches = System.Text.RegularExpressions.Regex.Matches(rawStr, @"03HCB[A-Z0-9]{19}");
+
                     for (int i = 0; i < layers; i++)
                     {
-                        // 每 40 字节为一节，跳过前 2 字节的西门子 String 头部 (最大长度和当前长度)
-                        byte[] cellBytes = rawData.Skip(i * 40 + 2).Take(barcodeLength).ToArray();
-                        // 过滤非打印字符并修剪
-                        string code = System.Text.Encoding.ASCII.GetString(cellBytes).Trim('\0', ' ', '\r', '\n');
+                        string code = "";
+                        if (i < matches.Count)
+                        {
+                            code = matches[i].Value;
+                        }
                         allBarcodes.Add(code);
                     }
                 }
@@ -287,22 +294,22 @@ public class PlcService : BackgroundService
     public async Task<(bool success, string error)> WriteValueAsync(string address, object value)
     {
         if (string.IsNullOrEmpty(address)) return (false, "地址为空");
-        
+
         await _writeLock.WaitAsync();
         try
         {
             string cleanAddr = address.Replace(" ", "").ToUpper();
-            
+
             // 【双重保险】自动补全 DB 编号
             // 逻辑：如果以 DB 开头，但不是以 "DB<数字>." 开头 (即缺少数据块编号)，则自动补齐
             bool isMissingDbNum = cleanAddr.StartsWith("DB") && !System.Text.RegularExpressions.Regex.IsMatch(cleanAddr, @"^DB\d+\.");
-            
+
             if (isMissingDbNum && _currentActiveDbNum > 0)
             {
                 cleanAddr = $"DB{_currentActiveDbNum}.{cleanAddr}";
                 _logger.LogInformation("[Auto-Fix] 地址自动补齐 DB 编号: {Old} -> {New}", address, cleanAddr);
             }
-            
+
             // 1. 处理 JsonElement 的基础解包
             if (value is JsonElement je)
             {
@@ -314,7 +321,8 @@ public class PlcService : BackgroundService
                 }
                 else
                 {
-                    value = je.ValueKind switch {
+                    value = je.ValueKind switch
+                    {
                         JsonValueKind.Number => je.GetDouble(),
                         JsonValueKind.True => true,
                         JsonValueKind.False => false,
@@ -357,7 +365,7 @@ public class PlcService : BackgroundService
             {
                 await Task.Run(() => _plc.Write(cleanAddr, value));
             }
-            
+
             await LogToMonitor("WRITE", cleanAddr, value is byte[] b ? $"BYTES[{b.Length}]" : (value.ToString() ?? ""), "SUCCESS");
             return (true, "SUCCESS");
         }
@@ -378,11 +386,11 @@ public class PlcService : BackgroundService
     {
         try
         {
-            await _hubContext.Clients.All.SendAsync("ReceivePlcMonitor", new 
-            { 
+            await _hubContext.Clients.All.SendAsync("ReceivePlcMonitor", new
+            {
                 time = DateTime.Now.ToString("HH:mm:ss.fff"),
-                action = action, 
-                address = address, 
+                action = action,
+                address = address,
                 result = value, // 这里改回 result，匹配 UI 表格字段
                 status = status
             });
@@ -408,22 +416,24 @@ public class PlcService : BackgroundService
                             int layers = 0;
                             int moduleSn = 0;
                             int dbNum = _aStackDbNum;
-                            
+
                             _logger.LogInformation("[DEBUG] A面触发! 内部地址状态: 层数={L}, 序号={S}, DB={DB}", _cellLayerAddress, _moduleSnAddress, dbNum);
 
-                            if (!string.IsNullOrEmpty(_cellLayerAddress)) {
+                            if (!string.IsNullOrEmpty(_cellLayerAddress))
+                            {
                                 var layerAddrA = GetSideAgnosticAddress(_cellLayerAddress, dbNum);
                                 var layerVal = await ReadValueAsync(layerAddrA);
                                 layers = SafeConvertToInt(layerVal);
                                 _logger.LogInformation("[PLC] A面层数原始值: {Raw}, 转换后: {Val}, 地址: {Addr}", layerVal, layers, layerAddrA);
                             }
-                            if (!string.IsNullOrEmpty(_moduleSnAddress)) {
+                            if (!string.IsNullOrEmpty(_moduleSnAddress))
+                            {
                                 var snAddrA = GetSideAgnosticAddress(_moduleSnAddress, dbNum);
                                 var snVal = await ReadValueAsync(snAddrA);
                                 moduleSn = SafeConvertToInt(snVal);
                                 _logger.LogInformation("[PLC] A面模组序号原始值: {Raw}, 转换后: {Val}, 地址: {Addr}", snVal, moduleSn, snAddrA);
                             }
-                             Console.WriteLine($"[Trigger] A面触发, DB: {dbNum}, 层数: {layers}, 模组序号: {moduleSn}");
+                            Console.WriteLine($"[Trigger] A面触发, DB: {dbNum}, 层数: {layers}, 模组序号: {moduleSn}");
                             _currentActiveDbNum = dbNum; // 记录当前活跃 DB
                             await HandlePlcTrigger("A面", layers, moduleSn, dbNum);
                             await WriteValueAsync(_aStackFinishAddress, false); // 立即复位
@@ -442,19 +452,22 @@ public class PlcService : BackgroundService
 
                             _logger.LogInformation("[DEBUG] B面触发! 内部地址状态: 层数={L}, 序号={S}, DB={DB}", _cellLayerAddress, _moduleSnAddress, dbNum);
 
-                            if (!string.IsNullOrEmpty(_cellLayerAddress)) {
+                            if (!string.IsNullOrEmpty(_cellLayerAddress))
+                            {
                                 var layerAddrB = GetSideAgnosticAddress(_cellLayerAddress, dbNum);
                                 var layerVal = await ReadValueAsync(layerAddrB);
                                 layers = SafeConvertToInt(layerVal);
                                 _logger.LogInformation("[PLC] B面层数原始值: {Raw}, 转换后: {Val}, 地址: {Addr}", layerVal, layers, layerAddrB);
                             }
-                            if (!string.IsNullOrEmpty(_moduleSnAddress)) {
+                            if (!string.IsNullOrEmpty(_moduleSnAddress))
+                            {
                                 var snAddrB = GetSideAgnosticAddress(_moduleSnAddress, dbNum);
                                 var snVal = await ReadValueAsync(snAddrB);
                                 moduleSn = SafeConvertToInt(snVal);
                                 _logger.LogInformation("[PLC] B面模组序号原始值: {Raw}, 转换后: {Val}, 地址: {Addr}", snVal, moduleSn, snAddrB);
                             }
-                            else {
+                            else
+                            {
                                 _logger.LogWarning("[PLC] ⚠ B面触发成功，但 _moduleSnAddress 为空");
                             }
                             Console.WriteLine($"[Trigger] B面触发, DB: {dbNum}, 层数: {layers}, 模组序号: {moduleSn}");
@@ -477,10 +490,13 @@ public class PlcService : BackgroundService
     private int SafeConvertToInt(object? val)
     {
         if (val == null) return 0;
-        try {
+        try
+        {
             if (val is bool b) return b ? 1 : 0;
             return Convert.ToInt32(val);
-        } catch {
+        }
+        catch
+        {
             return 0;
         }
     }
@@ -496,11 +512,11 @@ public class PlcService : BackgroundService
     {
         try
         {
-            await _hubContext.Clients.All.SendAsync("ReceiveLog", new 
-            { 
-                type = type, 
-                message = message, 
-                time = DateTime.Now.ToString("HH:mm:ss") 
+            await _hubContext.Clients.All.SendAsync("ReceiveLog", new
+            {
+                type = type,
+                message = message,
+                time = DateTime.Now.ToString("HH:mm:ss")
             });
         }
         catch { }

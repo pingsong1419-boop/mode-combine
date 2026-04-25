@@ -590,7 +590,7 @@ async function handleScan(overrideCode?: string) {
     } 
   }
   apiRecords.value.unshift(rec)
-  activeTab.value = 'api'
+  // 移除：在弹出工单选择对话框前不要强行跳转 Tab，优先保证人工操作聚焦
   
   try {
     const res = await getOrderByProcess(config.value, code)
